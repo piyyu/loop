@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  spotifyId    String     @unique
+  email        String     @unique
+  name         String?
+  image        String?
+  accessToken  String?
+  refreshToken String?
+  playlists    Playlist[]
+  favorites    Favorite[]
+  history      History[]
+  downloads    Download[]
+  settings     Settings?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  spotifyId   String   @unique
+  name        String
+  description String?
+  imageUrl    String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  songs       Song[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Song {
+  id          String     @id @default(cuid())
+  spotifyId   String     @unique
+  title       String
+  artist      String
+  album       String?
+  albumArt    String?
+  duration    Int // milliseconds
+  trackNumber Int?
+  playlists   Playlist[]
+  match       SongMatch?
+  favorites   Favorite[]
+  history     History[]
+  downloads   Download[]
+  createdAt   DateTime   @default(now())
+}
+
+model SongMatch {
+  id             String   @id @default(cuid())
+  songId         String   @unique
+  song           Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  providerId     String // e.g. "jiosaavn"
+  providerSongId String
+  streamUrl      String?
+  quality        String? // e.g. "320kbps"
+  matchedAt      DateTime @default(now())
+
+  @@index([providerId, providerSongId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, songId])
+  @@index([userId])
+}
+
+model History {
+  id       String   @id @default(cuid())
+  userId   String
+  songId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  playedAt DateTime @default(now())
+
+  @@index([userId, playedAt])
+}
+
+model Download {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  song      Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
+  fileKey   String // IndexedDB key
+  fileSize  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, songId])
+  @@index([userId])
+}
+
+model Settings {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  darkMode        Boolean @default(false)
+  theme           String  @default("classic")
+  playbackQuality String  @default("high")
+  clickSounds     Boolean @default(true)
+  hapticFeedback  Boolean @default(true)
+  cacheSize       Int     @default(500) // MB
+}

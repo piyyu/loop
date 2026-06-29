@@ -1,0 +1,36 @@
+{
+  "name": "Loop — Retro iPod Music Player",
+  "short_name": "Loop",
+  "description": "Retro iPod-inspired music player that imports Spotify playlists and streams music.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#E8E8ED",
+  "theme_color": "#E8E8ED",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
