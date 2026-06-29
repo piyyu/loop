@@ -20,6 +20,8 @@ import { CoverFlowScreen } from "@/components/screens/CoverFlowScreen";
 import { EqualizerScreen } from "@/components/screens/EqualizerScreen";
 import { StatsScreen } from "@/components/screens/StatsScreen";
 
+import { StatusBar } from "./StatusBar";
+
 const slideVariants = {
   enter: (direction: string) => ({
     x: direction === "left" ? "100%" : "-100%",
@@ -52,24 +54,30 @@ export function Screen() {
         background: screenColor,
       }}
     >
-      <AnimatePresence mode="popLayout" custom={transitionDirection}>
-        <motion.div
-          key={currentScreen.id + JSON.stringify(currentScreen.data || {})}
-          custom={transitionDirection}
-          variants={slideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{
-            type: "tween",
-            duration: 0.3,
-            ease: [0.25, 0.46, 0.45, 0.94],
-          }}
-          className="absolute inset-0"
-        >
-          <ScreenContent screenId={currentScreen.id} />
-        </motion.div>
-      </AnimatePresence>
+      {/* Static retro status bar */}
+      <StatusBar />
+
+      {/* Animating screen area */}
+      <div className="relative flex-1 w-full min-h-0 overflow-hidden">
+        <AnimatePresence mode="popLayout" custom={transitionDirection}>
+          <motion.div
+            key={currentScreen.id + JSON.stringify(currentScreen.data || {})}
+            custom={transitionDirection}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              type: "tween",
+              duration: 0.3,
+              ease: [0.25, 0.46, 0.45, 0.94],
+            }}
+            className="absolute inset-0 flex flex-col"
+          >
+            <ScreenContent screenId={currentScreen.id} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
