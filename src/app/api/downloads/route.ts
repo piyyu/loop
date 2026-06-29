@@ -31,13 +31,14 @@ export async function GET() {
     });
     if (!user) return NextResponse.json({ songs: [] });
 
-    const downloads = await prisma.download.findMany({
+    const downloadsRaw = await prisma.download.findMany({
       where: { userId: user.id },
       include: {
         song: { include: { match: true } },
       },
       orderBy: { createdAt: "desc" },
     });
+    const downloads: DownloadRow[] = downloadsRaw as unknown as DownloadRow[];
 
     return NextResponse.json({
       songs: downloads.map((d: DownloadRow) => ({
