@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-type FavoriteWithSong = Prisma.FavoriteGetPayload<{
-  include: { song: { include: { match: true } } };
-}>;
 
 /**
  * GET /api/favorites — Fetch user's favorites
@@ -23,7 +18,7 @@ export async function GET() {
     });
     if (!user) return NextResponse.json({ songs: [] });
 
-    const favorites: FavoriteWithSong[] = await prisma.favorite.findMany({
+    const favorites = await prisma.favorite.findMany({
       where: { userId: user.id },
       include: {
         song: { include: { match: true } },

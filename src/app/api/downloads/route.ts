@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-type DownloadWithSong = Prisma.DownloadGetPayload<{
-  include: { song: { include: { match: true } } };
-}>;
 
 /**
  * GET /api/downloads — Fetch user's downloaded songs (metadata only)
@@ -22,7 +17,7 @@ export async function GET() {
     });
     if (!user) return NextResponse.json({ songs: [] });
 
-    const downloads: DownloadWithSong[] = await prisma.download.findMany({
+    const downloads = await prisma.download.findMany({
       where: { userId: user.id },
       include: {
         song: { include: { match: true } },
