@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type FavoriteRow = {
+  song: {
+    id: string;
+    spotifyId: string;
+    title: string;
+    artist: string;
+    album: string | null;
+    albumArt: string | null;
+    duration: number;
+    match: { streamUrl: string | null } | null;
+  };
+};
+
 /**
  * GET /api/favorites — Fetch user's favorites
  * POST /api/favorites — Toggle favorite (body: { songId, song })
@@ -27,7 +40,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      songs: favorites.map((f) => ({
+      songs: favorites.map((f: FavoriteRow) => ({
         id: f.song.id,
         spotifyId: f.song.spotifyId,
         title: f.song.title,

@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type DownloadRow = {
+  song: {
+    id: string;
+    spotifyId: string;
+    title: string;
+    artist: string;
+    album: string | null;
+    albumArt: string | null;
+    duration: number;
+    match: { streamUrl: string | null } | null;
+  };
+  fileSize: number;
+};
+
 /**
  * GET /api/downloads — Fetch user's downloaded songs (metadata only)
  */
@@ -26,7 +40,7 @@ export async function GET() {
     });
 
     return NextResponse.json({
-      songs: downloads.map((d) => ({
+      songs: downloads.map((d: DownloadRow) => ({
         id: d.song.id,
         spotifyId: d.song.spotifyId,
         title: d.song.title,
