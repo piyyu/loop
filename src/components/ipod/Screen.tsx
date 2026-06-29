@@ -47,9 +47,8 @@ export function Screen() {
 
   return (
     <div
-      className="relative overflow-hidden flex-1"
+      className="relative overflow-hidden flex-1 w-full flex flex-col"
       style={{
-        height: "212px", // Screen height minus status bar
         background: screenColor,
       }}
     >

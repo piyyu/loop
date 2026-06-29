@@ -44,39 +44,45 @@ export function MenuList({ items, selectedIndex }: MenuListProps) {
     }
   }, [items]);
 
-  // Calculate visible window (iPod shows ~5-6 items at a time)
-  const visibleCount = 6;
-  const startIndex = Math.max(
-    0,
-    Math.min(activeIndex - 2, items.length - visibleCount)
-  );
-  const visibleItems = items.slice(startIndex, startIndex + visibleCount);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeItemRef = useRef<HTMLDivElement>(null);
+
+  // Auto scroll active item into view
+  useEffect(() => {
+    if (activeItemRef.current) {
+      activeItemRef.current.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [activeIndex]);
 
   return (
     <div
-      className="h-full overflow-hidden"
+      ref={containerRef}
+      className="h-full w-full overflow-y-auto scrollbar-none flex-1"
       style={{
         fontFamily: "'Chicago', 'SF Pro Text', system-ui, sans-serif",
-        fontSize: "13px",
+        fontSize: "13.5px",
       }}
       role="listbox"
       aria-label="Menu items"
     >
-      {visibleItems.map((item, idx) => {
-        const realIndex = startIndex + idx;
-        const isSelected = realIndex === activeIndex;
+      {items.map((item, idx) => {
+        const isSelected = idx === activeIndex;
 
         return (
           <div
             key={item.id}
-            className="flex items-center justify-between px-3 transition-colors cursor-pointer hover:bg-black/5 dark:hover:bg-white/5"
+            ref={isSelected ? activeItemRef : null}
+            className="flex items-center justify-between px-4 transition-colors cursor-pointer border-b border-black/[0.04] dark:border-white/[0.04] active:bg-black/5 dark:active:bg-white/5"
             style={{
-              height: "34px",
+              height: "46px",
               background: isSelected ? highlightBg : "transparent",
               color: isSelected ? highlightText : normalText,
             }}
             onClick={() => {
-              useNavigationStore.getState().setSelectedIndex(realIndex);
+              useNavigationStore.getState().setSelectedIndex(idx);
               // Directly invoke action or navigation for immediate response
               if (item.action) {
                 item.action();
@@ -110,7 +116,7 @@ export function MenuList({ items, selectedIndex }: MenuListProps) {
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{item.label}</div>
+                <div className="truncate font-semibold">{item.label}</div>
                 {item.subtitle && (
                   <div
                     className="truncate text-[10px]"
@@ -135,29 +141,6 @@ export function MenuList({ items, selectedIndex }: MenuListProps) {
           </div>
         );
       })}
-
-      {/* Scrollbar indicator */}
-      {items.length > visibleCount && (
-        <div
-          className="absolute right-0 top-0 bottom-0 w-[3px]"
-          style={{
-            background: darkMode
-              ? "rgba(255,255,255,0.05)"
-              : "rgba(0,0,0,0.05)",
-          }}
-        >
-          <div
-            className="w-full rounded-full transition-all duration-150"
-            style={{
-              background: darkMode
-                ? "rgba(255,255,255,0.2)"
-                : "rgba(0,0,0,0.15)",
-              height: `${(visibleCount / items.length) * 100}%`,
-              marginTop: `${(startIndex / items.length) * 100}%`,
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }

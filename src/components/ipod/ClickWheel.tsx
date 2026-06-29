@@ -169,7 +169,8 @@ export function ClickWheel() {
         style={{
           top: "50%",
           left: "50%",
-          transform: "translate(-50%, -50%)",
+          x: "-50%",
+          y: "-50%",
           width: "75px",
           height: "75px",
           background: `radial-gradient(circle at 40% 35%, ${adjustBrightness(wheelInner, 10)}, ${wheelInner})`,
