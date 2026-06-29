@@ -1,6 +1,7 @@
 "use client";
 
 import { useSettingsStore } from "@/stores/settings-store";
+import { THEMES } from "@/types/settings";
 import { Screen } from "./Screen";
 import { ClickWheel } from "./ClickWheel";
 
@@ -11,7 +12,8 @@ import { ClickWheel } from "./ClickWheel";
  * Optimized to fit full-screen on mobile devices and a sleek smartphone mockup on desktop.
  */
 export function IPodShell() {
-  const { darkMode } = useSettingsStore();
+  const { theme, darkMode } = useSettingsStore();
+  const colors = THEMES[theme];
 
   return (
     <div className="flex items-center justify-center min-h-screen p-0 md:p-6 select-none bg-neutral-950 w-full">
@@ -21,7 +23,7 @@ export function IPodShell() {
         style={{
           background: darkMode
             ? "linear-gradient(180deg, #1f1f1f 0%, #0c0c0c 100%)"
-            : "linear-gradient(180deg, #eaeaea 0%, #d5d5d5 100%)",
+            : `linear-gradient(180deg, ${colors.body} 0%, ${adjustBrightness(colors.body, -10)} 100%)`,
           boxShadow: darkMode
             ? "0 25px 50px -12px rgba(0, 0, 0, 0.75)"
             : "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
@@ -31,7 +33,7 @@ export function IPodShell() {
         <div
           className="w-full flex-[4.5] flex flex-col overflow-hidden relative"
           style={{
-            background: darkMode ? "#0c0d0c" : "#1a1e17",
+            background: darkMode ? "#0c0d0c" : adjustBrightness(colors.body, -25),
             padding: "10px 10px 6px 10px", // Bezel width
           }}
         >
@@ -53,7 +55,7 @@ export function IPodShell() {
           style={{
             background: darkMode
               ? "linear-gradient(180deg, #242424 0%, #141414 100%)"
-              : "linear-gradient(180deg, #f7f7f7 0%, #dfdfdf 100%)",
+              : `linear-gradient(180deg, ${colors.body} 0%, ${adjustBrightness(colors.body, -15)} 100%)`,
             boxShadow: "inset 0 2px 8px rgba(0,0,0,0.15)",
           }}
         >
@@ -88,4 +90,12 @@ export function IPodShell() {
       </div>
     </div>
   );
+}
+
+function adjustBrightness(hex: string, percent: number): string {
+  const num = parseInt(hex.replace("#", ""), 16);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xff) + percent));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + percent));
+  const b = Math.min(255, Math.max(0, (num & 0xff) + percent));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }

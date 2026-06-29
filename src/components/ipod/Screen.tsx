@@ -20,6 +20,7 @@ import { CoverFlowScreen } from "@/components/screens/CoverFlowScreen";
 import { EqualizerScreen } from "@/components/screens/EqualizerScreen";
 import { StatsScreen } from "@/components/screens/StatsScreen";
 
+import { THEMES } from "@/types/settings";
 import { StatusBar } from "./StatusBar";
 
 const slideVariants = {
@@ -43,9 +44,10 @@ const slideVariants = {
  */
 export function Screen() {
   const { currentScreen, transitionDirection } = useNavigationStore();
-  const { darkMode } = useSettingsStore();
+  const { theme, darkMode } = useSettingsStore();
+  const colors = THEMES[theme];
 
-  const screenColor = darkMode ? "#0F1410" : "#B8C9A3";
+  const screenColor = darkMode ? "#0F1410" : colors.screen;
 
   return (
     <div

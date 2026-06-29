@@ -31,26 +31,18 @@ const HOME_SCREEN: Screen = {
   id: "home",
   title: "iPod",
   items: [
-    { id: "music", label: "Music", icon: "♫", screen: "music", hasArrow: true },
+    {
+      id: "playlists",
+      label: "Playlists",
+      icon: "☰",
+      screen: "playlists",
+      hasArrow: true,
+    },
     {
       id: "favorites",
       label: "Favorites",
       icon: "♥",
       screen: "favorites",
-      hasArrow: true,
-    },
-    {
-      id: "downloads",
-      label: "Downloads",
-      icon: "↓",
-      screen: "downloads",
-      hasArrow: true,
-    },
-    {
-      id: "recently-played",
-      label: "Recently Played",
-      icon: "⟲",
-      screen: "recently-played",
       hasArrow: true,
     },
     {

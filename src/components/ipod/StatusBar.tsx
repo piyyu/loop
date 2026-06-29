@@ -10,25 +10,32 @@ import { formatSeconds } from "@/utils/format";
  * iPod status bar — shows at the top of the LCD screen.
  * Displays: screen title, play indicator, battery, time.
  */
+import { THEMES } from "@/types/settings";
+
+/**
+ * iPod status bar — shows at the top of the LCD screen.
+ * Displays: screen title, play indicator, battery, time.
+ */
 export function StatusBar() {
   const { currentScreen } = useNavigationStore();
   const { isPlaying, currentSong } = usePlayerStore();
-  const { darkMode } = useSettingsStore();
+  const { theme, darkMode } = useSettingsStore();
   const { isOffline } = useOffline();
 
-  const textColor = darkMode ? "#C8D8B8" : "#2A3A1A";
-  const bgColor = darkMode ? "rgba(20,30,15,0.9)" : "rgba(160,180,140,0.9)";
+  const colors = THEMES[theme];
+  const textColor = darkMode ? "#C8D8B8" : colors.screenText;
+  const bgColor = darkMode ? "rgba(20,30,15,0.95)" : "rgba(0,0,0,0.06)";
 
   return (
     <div
-      className="flex items-center justify-between px-3 py-1 relative z-10"
+      className="flex items-center justify-between px-3 py-1.5 relative z-10"
       style={{
         background: bgColor,
         borderBottom: darkMode
-          ? "1px solid rgba(100,120,80,0.2)"
-          : "1px solid rgba(100,130,80,0.3)",
+          ? "1px solid rgba(255,255,255,0.08)"
+          : "1px solid rgba(0,0,0,0.08)",
         fontSize: "11px",
-        fontWeight: 600,
+        fontWeight: 700,
         color: textColor,
         fontFamily: "'Chicago', 'SF Pro Text', system-ui, sans-serif",
       }}

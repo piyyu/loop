@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigationStore, SCREEN_DEFINITIONS } from "@/stores/navigation-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { THEMES } from "@/types/settings";
 import type { MenuItem } from "@/types/navigation";
 
 interface MenuListProps {
@@ -16,12 +17,13 @@ interface MenuListProps {
  */
 export function MenuList({ items, selectedIndex }: MenuListProps) {
   const storeIndex = useNavigationStore((s) => s.selectedIndex);
-  const { darkMode } = useSettingsStore();
+  const { theme, darkMode } = useSettingsStore();
   const activeIndex = selectedIndex ?? storeIndex;
 
-  const highlightBg = darkMode ? "#3A5A9D" : "#4A90D9";
-  const highlightText = "#FFFFFF";
-  const normalText = darkMode ? "#C8D8B8" : "#1a1a1a";
+  const colors = THEMES[theme];
+  const highlightBg = colors.highlight;
+  const highlightText = colors.highlightText;
+  const normalText = darkMode ? "#C8D8B8" : colors.screenText;
   const subtitleColor = darkMode ? "#8A9A7A" : "#5A6A4A";
 
   // Sync items to current screen store so that the click-wheel center select button is aware of current screen options
