@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+type FavoriteWithSong = Prisma.FavoriteGetPayload<{
+  include: { song: { include: { match: true } } };
+}>;
+
 /**
  * GET /api/favorites — Fetch user's favorites
- * POST /api/favorites — Toggle favorite (body: { songId })
+ * POST /api/favorites — Toggle favorite (body: { songId, song })
  */
 export async function GET() {
   try {
@@ -18,7 +23,7 @@ export async function GET() {
     });
     if (!user) return NextResponse.json({ songs: [] });
 
-    const favorites = await prisma.favorite.findMany({
+    const favorites: FavoriteWithSong[] = await prisma.favorite.findMany({
       where: { userId: user.id },
       include: {
         song: { include: { match: true } },
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { songId } = await request.json();
+    const { songId, song } = await request.json();
     if (!songId) {
       return NextResponse.json(
         { error: "songId required" },
@@ -65,6 +70,37 @@ export async function POST(request: NextRequest) {
     });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Ensure the song exists in the database
+    let dbSong = await prisma.song.findUnique({
+      where: { id: songId },
+    });
+
+    if (!dbSong && song) {
+      dbSong = await prisma.song.create({
+        data: {
+          id: song.id,
+          spotifyId: song.spotifyId || `provider-${song.id}`,
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          albumArt: song.albumArt,
+          duration: song.duration,
+          trackNumber: song.trackNumber || null,
+        },
+      });
+
+      if (song.streamUrl) {
+        await prisma.songMatch.create({
+          data: {
+            songId: dbSong.id,
+            streamUrl: song.streamUrl,
+            providerId: "jiosaavn",
+            providerSongId: song.id,
+          },
+        });
+      }
     }
 
     // Toggle favorite

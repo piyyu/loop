@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Extract __NEXT_DATA__ JSON script content
     const jsonMatch = html.match(
-      /<script[^>]*__NEXT_DATA__[^>]*>(.*?)<\/script>/s
+      /<script[^>]*__NEXT_DATA__[^>]*>([\s\S]*?)<\/script>/
     );
     if (!jsonMatch) {
       return NextResponse.json(
