@@ -34,7 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize() {
         return {
           id: "dev-user",
-          name: "iPod Retro User",
+          name: "Loop Retro User",
           email: "dev@loop.music",
         };
       },

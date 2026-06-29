@@ -29,7 +29,7 @@ interface NavigationStore {
 
 const HOME_SCREEN: Screen = {
   id: "home",
-  title: "iPod",
+  title: "Loop",
   items: [
     {
       id: "playlists",

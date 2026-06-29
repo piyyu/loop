@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   return NextResponse.json({
     id: "mock-spotify-id",
-    display_name: "iPod Demo User",
+    display_name: "Loop Demo User",
     email: "dev@loop.music",
     images: [
       {

@@ -6,12 +6,12 @@ import { Screen } from "./Screen";
 import { ClickWheel } from "./ClickWheel";
 
 /**
- * The main iPod device shell — renders a split interface:
+ * The main Loop device shell — renders a split interface:
  * - Top 45%: Screen bezel containing the LCD Screen.
  * - Bottom 55%: Skeuomorphic casing containing the mechanical click wheel.
  * Optimized to fit full-screen on mobile devices and a sleek smartphone mockup on desktop.
  */
-export function IPodShell() {
+export function LoopShell() {
   const { theme, darkMode } = useSettingsStore();
   const colors = THEMES[theme];
 

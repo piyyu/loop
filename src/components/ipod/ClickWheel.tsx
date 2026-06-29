@@ -15,7 +15,7 @@ import { THEMES } from "@/types/settings";
  * Supports touch/mouse rotation for scrolling and quadrant buttons.
  */
 export function ClickWheel() {
-  const { scrollUp, scrollDown, select, pop } = useNavigationStore();
+  const { scrollUp, scrollDown, select, pop, push } = useNavigationStore();
   const { togglePlay, next, previous } = usePlayerStore();
   const { theme, darkMode } = useSettingsStore();
   const haptic = useHaptic();
@@ -45,6 +45,7 @@ export function ClickWheel() {
 
   const handleButtonPress = useCallback(
     (button: string) => {
+      console.log("ClickWheel button pressed:", button);
       setActiveButton(button);
       haptic.select();
       sounds.select();
@@ -54,7 +55,7 @@ export function ClickWheel() {
           pop();
           break;
         case "play":
-          togglePlay();
+          push({ id: "now-playing", title: "Now Playing" });
           break;
         case "next":
           next();
@@ -63,13 +64,13 @@ export function ClickWheel() {
           previous();
           break;
         case "center":
-          select();
+          togglePlay();
           break;
       }
 
       setTimeout(() => setActiveButton(null), 150);
     },
-    [pop, togglePlay, next, previous, select, haptic, sounds]
+    [pop, push, togglePlay, next, previous, select, haptic, sounds]
   );
 
   const getWheelHandlers = wheelProps();
@@ -107,7 +108,6 @@ export function ClickWheel() {
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
-            handleButtonPress("menu");
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -127,7 +127,6 @@ export function ClickWheel() {
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
-            handleButtonPress("prev");
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -149,7 +148,6 @@ export function ClickWheel() {
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
-            handleButtonPress("next");
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -172,7 +170,6 @@ export function ClickWheel() {
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
-            handleButtonPress("play");
           }}
           onClick={(e) => {
             e.stopPropagation();
@@ -186,12 +183,8 @@ export function ClickWheel() {
 
       {/* Center select button (Concave effect + Play/Pause Action) */}
       <motion.button
-        className="absolute rounded-full z-20 border border-black/5 dark:border-white/5 flex items-center justify-center"
+        className="absolute rounded-full z-20 border border-black/5 dark:border-white/5 flex items-center justify-center left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{
-          top: "50%",
-          left: "50%",
-          x: "-50%",
-          y: "-50%",
           width: "78px",
           height: "78px",
           background: darkMode
@@ -204,7 +197,6 @@ export function ClickWheel() {
         whileTap={{ scale: 0.96 }}
         onPointerDown={(e) => {
           e.stopPropagation();
-          handleButtonPress("center");
         }}
         onClick={(e) => {
           e.stopPropagation();

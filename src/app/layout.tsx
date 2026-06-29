@@ -10,9 +10,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Loop — iPod Music Player",
+  title: "Loop — Web Music Player",
   description:
-    "A retro iPod-inspired music player that imports Spotify playlists and streams music. Experience the classic click wheel on the web.",
+    "A retro-inspired music player that imports Spotify playlists and streams music. Experience the classic click wheel on the web.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
     title: "Loop",
   },
   openGraph: {
-    title: "Loop — iPod Music Player",
-    description: "Classic iPod experience on the modern web",
+    title: "Loop — Web Music Player",
+    description: "Classic retro experience on the modern web",
     type: "website",
   },
 };

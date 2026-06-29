@@ -13,7 +13,7 @@ async function syncMockData(spotifyId: string) {
   const user = await prisma.user.upsert({
     where: { spotifyId: spotifyId },
     update: {
-      name: "iPod Demo User",
+      name: "Loop Demo User",
       email: "dev@loop.music",
       image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
       accessToken: "mock-dev-token",
@@ -21,7 +21,7 @@ async function syncMockData(spotifyId: string) {
     create: {
       spotifyId: spotifyId,
       email: "dev@loop.music",
-      name: "iPod Demo User",
+      name: "Loop Demo User",
       image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
       accessToken: "mock-dev-token",
     },
