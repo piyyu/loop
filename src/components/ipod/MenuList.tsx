@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigationStore, SCREEN_DEFINITIONS } from "@/stores/navigation-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import type { MenuItem } from "@/types/navigation";
@@ -25,24 +25,22 @@ export function MenuList({ items, selectedIndex }: MenuListProps) {
   const subtitleColor = darkMode ? "#8A9A7A" : "#5A6A4A";
 
   // Sync items to current screen store so that the click-wheel center select button is aware of current screen options
+  const prevItemIdsRef = useRef<string>("");
   useEffect(() => {
+    const itemIds = items.map((i) => i.id).join(",");
+    if (itemIds === prevItemIdsRef.current) return;
+    prevItemIdsRef.current = itemIds;
+
     const { currentScreen, screenStack } = useNavigationStore.getState();
     if (currentScreen) {
-      const currentItems = currentScreen.items || [];
-      const hasChanged =
-        currentItems.length !== items.length ||
-        items.some((item, index) => item.id !== currentItems[index]?.id);
-
-      if (hasChanged) {
-        const updatedScreen = { ...currentScreen, items };
-        const updatedStack = screenStack.map((s) =>
-          s.id === currentScreen.id ? updatedScreen : s
-        );
-        useNavigationStore.setState({
-          currentScreen: updatedScreen,
-          screenStack: updatedStack,
-        });
-      }
+      const updatedScreen = { ...currentScreen, items };
+      const updatedStack = screenStack.map((s) =>
+        s.id === currentScreen.id ? updatedScreen : s
+      );
+      useNavigationStore.setState({
+        currentScreen: updatedScreen,
+        screenStack: updatedStack,
+      });
     }
   }, [items]);
 

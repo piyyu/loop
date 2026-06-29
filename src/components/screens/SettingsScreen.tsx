@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
@@ -11,8 +13,47 @@ import type { AudioQuality } from "@/types/music";
  */
 export function SettingsScreen() {
   const settings = useSettingsStore();
+  const { data: session } = useSession();
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const isRealSpotify = session?.accessToken && session.accessToken !== "mock-dev-token" && session.accessToken !== "mock-spotify-access-token";
+  const accountLabel = isRealSpotify
+    ? `Connected as ${session?.user?.name || "Spotify User"}`
+    : session?.user?.name || "Demo Mode";
 
   const items: MenuItem[] = [
+    {
+      id: "account",
+      label: "Spotify Account",
+      subtitle: accountLabel,
+      action: () => {
+        if (!isRealSpotify) {
+          // Redirect to login to connect real Spotify
+          window.location.href = "/login";
+        }
+      },
+    },
+    {
+      id: "sync",
+      label: "Sync Playlists",
+      subtitle: syncStatus || "From Spotify",
+      action: async () => {
+        setSyncStatus("Syncing…");
+        try {
+          const res = await fetch("/api/spotify/sync", { method: "POST" });
+          if (res.ok) {
+            const data = await res.json();
+            setSyncStatus(`✓ ${data.playlists} playlists, ${data.songs} songs`);
+          } else {
+            setSyncStatus("✗ Sync failed");
+          }
+        } catch {
+          setSyncStatus("✗ Sync failed");
+        }
+        // Clear status after 5 seconds
+        setTimeout(() => setSyncStatus(null), 5000);
+      },
+    },
     {
       id: "dark-mode",
       label: "Dark Mode",
@@ -77,18 +118,6 @@ export function SettingsScreen() {
       label: "Statistics",
       hasArrow: true,
       screen: "stats" as const,
-    },
-    {
-      id: "sync",
-      label: "Sync Playlists",
-      subtitle: "From Spotify",
-      action: async () => {
-        try {
-          await fetch("/api/spotify/sync", { method: "POST" });
-        } catch {
-          // silent
-        }
-      },
     },
     {
       id: "logout",
