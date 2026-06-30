@@ -6,6 +6,20 @@ import type { MusicProvider } from "./music-provider";
 import type { AudioQuality, ProviderSong } from "@/types/music";
 import { SearchService, SongService } from "jiosaavn-sdk";
 
+// Vercel AWS instances are geo-blocked by JioSaavn. We monkey-patch the global fetch
+// to inject an Indian IP geo-cookie and language preference for all JioSaavn requests.
+const originalFetch = global.fetch;
+global.fetch = async (input, init) => {
+  const url = input?.toString() || "";
+  if (url.includes("jiosaavn.com")) {
+    const newHeaders = new Headers(init?.headers);
+    // Hardcode an Indian geo-cookie and english language preference
+    newHeaders.set("Cookie", "geo=103.155.223.1%2CIN%2CMaharashtra%2CMumbai%2C400001; L=english,hindi;");
+    return originalFetch(input, { ...init, headers: newHeaders });
+  }
+  return originalFetch(input, init);
+};
+
 interface JioSaavnSearchResult {
   id: string;
   name: string;
