@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
@@ -123,7 +123,7 @@ export function SettingsScreen() {
       id: "logout",
       label: "Logout",
       action: () => {
-        window.location.href = "/api/auth/signout";
+        signOut({ callbackUrl: "/login" });
       },
     },
   ];
