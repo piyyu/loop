@@ -25,13 +25,12 @@ function getNativeConnectionString(url: string): string {
   return url;
 }
 
-const createPrismaClient = () => {
+function createPrismaClient(): PrismaClient {
   let connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    // Return standard client as fallback, Prisma 7 will error if query is executed without options,
-    // but this prevents crash during static build page analysis.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return new PrismaClient({} as any);
+    throw new Error(
+      "DATABASE_URL is not set. Cannot create Prisma client without a database connection."
+    );
   }
   connectionString = getNativeConnectionString(connectionString);
 
@@ -51,8 +50,33 @@ const createPrismaClient = () => {
 
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
-};
+}
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+/**
+ * Lazy Prisma client singleton.
+ *
+ * Uses a Proxy so that PrismaClient is only instantiated when a property is
+ * first accessed (i.e. at request time), NOT at module-import time.
+ * This prevents build-time crashes on platforms like Vercel where DATABASE_URL
+ * is unavailable during static page collection.
+ */
+function getLazyPrisma(): PrismaClient {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+  // Return a Proxy that defers construction until first use
+  const handler: ProxyHandler<object> = {
+    get(_target, prop, receiver) {
+      // Construct the real client on first property access
+      if (!globalForPrisma.prisma) {
+        globalForPrisma.prisma = createPrismaClient();
+      }
+      return Reflect.get(globalForPrisma.prisma, prop, receiver);
+    },
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new Proxy({} as any, handler);
+}
+
+export const prisma = getLazyPrisma();
