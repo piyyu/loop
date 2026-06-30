@@ -82,14 +82,14 @@ export default function LoginPage() {
                   lineHeight: 1.4,
                 }}
               >
-                Connect your Spotify account
+                Sign in to access
                 <br />
-                to import your music library
+                your music library
               </p>
 
               <motion.button
-                onClick={() => signIn("spotify", { callbackUrl: "/" })}
-                className="w-full py-2 px-4 rounded font-bold"
+                onClick={() => signIn("credentials", { callbackUrl: "/" })}
+                className="w-full py-2 px-4 rounded font-bold mt-2"
                 style={{
                   background: "#4A90D9",
                   color: "#FFFFFF",
@@ -101,27 +101,9 @@ export default function LoginPage() {
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                aria-label="Connect with Spotify"
+                aria-label="Demo Login"
               >
-                Connect with Spotify
-              </motion.button>
-
-              <motion.button
-                onClick={() => signIn("credentials", { callbackUrl: "/" })}
-                className="w-full py-1.5 px-4 rounded font-bold mt-2"
-                style={{
-                  background: "transparent",
-                  color: "#4A5A3D",
-                  fontSize: "10px",
-                  fontFamily: "Chicago, system-ui",
-                  border: "1px solid #5A6A4A",
-                  cursor: "pointer",
-                }}
-                whileHover={{ scale: 1.02, background: "rgba(0,0,0,0.03)" }}
-                whileTap={{ scale: 0.98 }}
-                aria-label="Demo Bypass"
-              >
-                Demo Bypass (No Account)
+                Demo Login
               </motion.button>
             </div>
           </div>
