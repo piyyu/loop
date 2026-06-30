@@ -41,9 +41,7 @@ function createPrismaClient(): PrismaClient {
     connectionTimeoutMillis: 10000,
     // SSL required for most cloud Postgres providers
     ssl:
-      connectionString.includes("supabase.co") ||
-      connectionString.includes("neon.tech") ||
-      connectionString.includes("railway.app")
+      !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")
         ? { rejectUnauthorized: false }
         : undefined,
   });
