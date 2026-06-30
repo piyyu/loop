@@ -64,16 +64,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.upsert({
       where: { spotifyId: session.spotifyId },
+      update: {},
+      create: {
+        spotifyId: session.spotifyId,
+        email: session.user?.email || "unknown@loop.music",
+        name: session.user?.name || "Loop User",
+      },
     });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found in database" },
-        { status: 404 }
-      );
-    }
 
     const playlistName = entity.name || entity.title || "Imported Playlist";
     const playlistDesc = entity.subtitle || "";
