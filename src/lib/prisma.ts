@@ -39,6 +39,9 @@ function createPrismaClient(): PrismaClient {
     max: process.env.NODE_ENV === "production" ? 5 : 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
+    // Supabase direct URLs (db.xxxx.supabase.co) only support IPv6 now.
+    // Node.js pg driver defaults to IPv4 which causes DNS resolution failure.
+    family: connectionString.includes("supabase.co") ? 6 : undefined,
     // SSL required for most cloud Postgres providers
     ssl:
       !connectionString.includes("localhost") && !connectionString.includes("127.0.0.1")
@@ -66,13 +69,13 @@ function getLazyPrisma(): PrismaClient {
   // Return a Proxy that defers construction until first use
   const handler: ProxyHandler<object> = {
     get(_target, prop, receiver) {
-      // Construct the real client on first property access
       if (!globalForPrisma.prisma) {
         globalForPrisma.prisma = createPrismaClient();
       }
       return Reflect.get(globalForPrisma.prisma, prop, receiver);
     },
   };
+  
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new Proxy({} as any, handler);
 }
