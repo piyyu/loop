@@ -1,86 +1,48 @@
-/**
- * JioSaavn music provider implementation using the local jiosaavn-sdk.
- */
-
 import type { MusicProvider } from "./music-provider";
 import type { AudioQuality, ProviderSong } from "@/types/music";
-import { SearchService, SongService } from "jiosaavn-sdk";
-
-// Vercel AWS instances are geo-blocked by JioSaavn. We monkey-patch the global fetch
-// to inject an Indian IP geo-cookie and language preference for all JioSaavn requests.
-const originalFetch = global.fetch;
-global.fetch = async (input, init) => {
-  const url = input?.toString() || "";
-  if (url.includes("jiosaavn.com")) {
-    const newHeaders = new Headers(init?.headers);
-    // Hardcode an Indian geo-cookie and english language preference
-    newHeaders.set("Cookie", "geo=103.155.223.1%2CIN%2CMaharashtra%2CMumbai%2C400001; L=english,hindi;");
-    return originalFetch(input, { ...init, headers: newHeaders });
-  }
-  return originalFetch(input, init);
-};
-
-interface JioSaavnSearchResult {
-  id: string;
-  name: string;
-  artists?: {
-    primary?: { name: string }[];
-    all?: { name: string }[];
-  };
-  album?: {
-    name: string | null;
-  };
-  image?: { url: string; quality: string }[];
-  duration?: number | null;
-  downloadUrl?: { url: string; quality: string }[];
-}
-
-interface JioSaavnSongDetail {
-  id: string;
-  name: string;
-  artists?: {
-    primary?: { name: string }[];
-    all?: { name: string }[];
-  };
-  album?: {
-    name: string | null;
-  };
-  image?: { url: string; quality: string }[];
-  duration?: number | null;
-  downloadUrl?: { url: string; quality: string }[];
-}
+import forge from "node-forge";
 
 const QUALITY_MAP: Record<AudioQuality, string> = {
-  low: "96kbps",
-  medium: "160kbps",
-  high: "320kbps",
-  lossless: "320kbps",
+  low: "_96.mp4",
+  medium: "_160.mp4",
+  high: "_320.mp4",
+  lossless: "_320.mp4",
 };
 
 export class JioSaavnProvider implements MusicProvider {
   readonly name = "jiosaavn";
   readonly displayName = "JioSaavn";
 
-  private searchService: SearchService;
-  private songService: SongService;
+  // Shared fetcher to inject Indian geo-cookie and bypass Vercel IP blocks
+  private async fetchApi(endpoint: string, params: Record<string, string>) {
+    const url = new URL("https://www.jiosaavn.com/api.php");
+    url.searchParams.append("__call", endpoint);
+    url.searchParams.append("_format", "json");
+    url.searchParams.append("_marker", "0");
+    url.searchParams.append("api_version", "4");
+    url.searchParams.append("ctx", "web6dot0");
 
-  constructor() {
-    this.searchService = new SearchService();
-    this.songService = new SongService();
+    Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]));
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Cookie": "geo=103.155.223.1%2CIN%2CMaharashtra%2CMumbai%2C400001; L=english,hindi;",
+      },
+    });
+
+    if (!response.ok) throw new Error(`JioSaavn API Error: ${response.status}`);
+    return response.json();
   }
 
   async searchSong(query: string, artist?: string): Promise<ProviderSong[]> {
     const searchQuery = artist ? `${query} ${artist}` : query;
 
     try {
-      const data = await this.searchService.searchSongs({
-        query: searchQuery,
-        page: 1,
-        limit: 10,
-      });
+      const data = await this.fetchApi("search.getResults", { q: searchQuery, n: "10", p: "1" });
       const results = data.results || [];
-
-      return results.map((song) => this.mapToProviderSong(song as any));
+      return results.map((song: any) => this.mapToProviderSong(song));
     } catch (error) {
       console.error("JioSaavn search error:", error);
       return [];
@@ -89,42 +51,26 @@ export class JioSaavnProvider implements MusicProvider {
 
   async getSong(id: string): Promise<ProviderSong | null> {
     try {
-      const songs = await this.songService.getSongByIds({ songIds: id });
-      const song = songs?.[0];
-
+      const data = await this.fetchApi("song.getDetails", { pids: id });
+      const song = data?.songs?.[0] || data?.[id];
       if (!song) return null;
-
-      return this.mapToProviderSong(song as any);
+      return this.mapToProviderSong(song);
     } catch (error) {
       console.error("JioSaavn getSong error:", error);
       return null;
     }
   }
 
-  async getStreamUrl(
-    id: string,
-    quality: AudioQuality = "high"
-  ): Promise<string> {
+  async getStreamUrl(id: string, quality: AudioQuality = "high"): Promise<string> {
     const song = await this.getSong(id);
-    if (!song) throw new Error(`Song not found: ${id}`);
+    if (!song || !song.streamUrl) throw new Error(`Song not found: ${id}`);
 
-    // Try to find the requested quality, fall back to highest available
-    const targetQuality = QUALITY_MAP[quality];
-    const downloadUrls = await this.getDownloadUrls(id);
-
-    const match =
-      downloadUrls.find((u) => u.quality === targetQuality) ||
-      downloadUrls[downloadUrls.length - 1]; // highest available
-
-    if (!match) throw new Error(`No stream URL available for: ${id}`);
-
-    return match.url;
+    // JioSaavn stream URLs have qualities like _96.mp4, _160.mp4, _320.mp4
+    const suffix = QUALITY_MAP[quality];
+    return song.streamUrl.replace(/_96\.mp4|_160\.mp4|_320\.mp4/, suffix);
   }
 
-  async download(
-    id: string,
-    quality: AudioQuality = "high"
-  ): Promise<ArrayBuffer> {
+  async download(id: string, quality: AudioQuality = "high"): Promise<ArrayBuffer> {
     const streamUrl = await this.getStreamUrl(id, quality);
     const response = await fetch(streamUrl);
 
@@ -135,44 +81,46 @@ export class JioSaavnProvider implements MusicProvider {
     return response.arrayBuffer();
   }
 
-  private async getDownloadUrls(
-    id: string
-  ): Promise<{ url: string; quality: string }[]> {
+  private decryptUrl(encryptedMediaUrl: string): string {
+    if (!encryptedMediaUrl) return "";
     try {
-      const songs = await this.songService.getSongByIds({ songIds: id });
-      const song = songs?.[0];
-
-      return song?.downloadUrl || [];
-    } catch {
-      return [];
+      const key = "38346591";
+      const encrypted = forge.util.decode64(encryptedMediaUrl);
+      const decipher = forge.cipher.createDecipher("DES-ECB", forge.util.createBuffer(key));
+      decipher.start({ iv: forge.util.createBuffer("") });
+      decipher.update(forge.util.createBuffer(encrypted));
+      decipher.finish();
+      return decipher.output.getBytes();
+    } catch (error) {
+      console.error("Decryption error:", error);
+      return "";
     }
   }
 
-  private mapToProviderSong(
-    song: JioSaavnSearchResult | JioSaavnSongDetail
-  ): ProviderSong {
-    const artists =
-      song.artists?.primary?.map((a) => a.name).join(", ") ||
-      song.artists?.all?.map((a) => a.name).join(", ") ||
-      "Unknown Artist";
+  private mapToProviderSong(song: any): ProviderSong {
+    // Extract primary artists
+    const artistMap = song.more_info?.artistMap;
+    const artists = artistMap?.primary_artists?.map((a: any) => a.name).join(", ") 
+      || song.subtitle 
+      || "Unknown Artist";
 
-    const albumArt =
-      song.image?.find((i) => i.quality === "500x500")?.url ||
-      song.image?.[song.image.length - 1]?.url ||
-      null;
+    // Decrypt the media url to get the streamable link (defaults to 96kbps, getStreamUrl modifies this)
+    const encryptedUrl = song.more_info?.encrypted_media_url || song.more_info?.encrypted_drm_media_url;
+    const streamUrl = this.decryptUrl(encryptedUrl);
 
-    const streamUrl =
-      song.downloadUrl?.find((u) => u.quality === "320kbps")?.url ||
-      song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
-      "";
+    // Fix image URL resolution to high quality
+    let albumArt = song.image || null;
+    if (albumArt) {
+      albumArt = albumArt.replace("150x150", "500x500");
+    }
 
     return {
       id: song.id,
-      title: song.name,
+      title: song.title || song.name,
       artist: artists,
-      album: song.album?.name || "Unknown Album",
+      album: song.more_info?.album || song.album || "Unknown Album",
       albumArt,
-      duration: (song.duration || 0) * 1000, // convert seconds to ms
+      duration: parseInt(song.more_info?.duration || song.duration || "0", 10) * 1000,
       streamUrl,
       quality: "high",
       provider: this.name,
