@@ -1,0 +1,11 @@
+
+> loop@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.31.130:3000
+- Environments: .env
+✓ Ready in 609ms
+
+ GET /api/music/search?q=believer 200 in 1617ms (next.js: 368ms, application-code: 1250ms)

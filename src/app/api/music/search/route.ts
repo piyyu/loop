@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
 
     // Search by query
     if (query) {
-      // Search database first
+      // Search database only
       const dbSongs = await prisma.song.findMany({
         where: {
           OR: [
@@ -118,11 +118,6 @@ export async function GET(request: NextRequest) {
         take: 20,
       });
 
-      // Also search provider for additional results
-      const provider = getProvider();
-      const providerResults = await provider.searchSong(query);
-
-      // Merge results — DB songs first, then provider
       const dbSongList = dbSongs.map((s) => ({
         id: s.id,
         spotifyId: s.spotifyId,
@@ -135,29 +130,8 @@ export async function GET(request: NextRequest) {
         streamUrl: s.match?.streamUrl || null,
       }));
 
-      const providerSongList = providerResults
-        .filter(
-          (pr) =>
-            !dbSongList.some(
-              (ds) =>
-                ds.title.toLowerCase() === pr.title.toLowerCase() &&
-                ds.artist.toLowerCase() === pr.artist.toLowerCase()
-            )
-        )
-        .map((pr) => ({
-          id: pr.id,
-          spotifyId: "",
-          title: pr.title,
-          artist: pr.artist,
-          album: pr.album,
-          albumArt: pr.albumArt,
-          duration: pr.duration,
-          trackNumber: null,
-          streamUrl: pr.streamUrl,
-        }));
-
       return NextResponse.json({
-        songs: [...dbSongList, ...providerSongList],
+        songs: dbSongList,
       });
     }
 

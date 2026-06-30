@@ -115,25 +115,29 @@ export function useAudioPlayer() {
           return;
         }
 
-        // Resolve stream URL via server-side API
-        // First try the search endpoint to find a match with stream URL
+        // Resolve stream URL via client-side proxy API
         const searchRes = await fetch(
-          `/api/music/search?q=${encodeURIComponent(`${currentSong.title} ${currentSong.artist}`)}`
+          `https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(`${currentSong.title} ${currentSong.artist}`)}&limit=5`
         );
 
         if (searchRes.ok) {
           const searchData = await searchRes.json();
-          const songs = searchData.songs || [];
-          const match = songs.find(
-            (s: { streamUrl?: string }) => s.streamUrl
-          );
-
-          if (match?.streamUrl) {
-            audio.src = match.streamUrl;
-            audio.load();
-            if (isPlaying) await audio.play();
-            setLoading(false);
-            return;
+          if (searchData.success && searchData.data?.results) {
+            const match = searchData.data.results.find((s: any) => s.downloadUrl && s.downloadUrl.length > 0);
+            
+            if (match) {
+              const streamUrl = 
+                match.downloadUrl.find((u: any) => u.quality === "320kbps")?.url || 
+                match.downloadUrl[match.downloadUrl.length - 1]?.url;
+                
+              if (streamUrl) {
+                audio.src = streamUrl;
+                audio.load();
+                if (isPlaying) await audio.play();
+                setLoading(false);
+                return;
+              }
+            }
           }
         }
 

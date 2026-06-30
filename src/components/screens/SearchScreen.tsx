@@ -36,15 +36,69 @@ export function SearchScreen() {
       setHasSearched(true);
 
       try {
-        const res = await fetch(
-          `/api/music/search?q=${encodeURIComponent(q)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.songs || []);
+        const [dbRes, providerRes] = await Promise.all([
+          fetch(`/api/music/search?q=${encodeURIComponent(q)}`),
+          fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(q)}&limit=10`)
+        ]);
+
+        let dbSongs: Song[] = [];
+        let providerSongs: Song[] = [];
+
+        if (dbRes.ok) {
+          const data = await dbRes.json();
+          dbSongs = data.songs || [];
         }
-      } catch {
-        // silent
+
+        if (providerRes.ok) {
+          const data = await providerRes.json();
+          if (data.success && data.data?.results) {
+            providerSongs = data.data.results.map((song: any) => {
+              const artists =
+                song.artists?.primary?.map((a: any) => a.name).join(", ") ||
+                song.artists?.all?.map((a: any) => a.name).join(", ") ||
+                "Unknown Artist";
+
+              const streamUrl =
+                song.downloadUrl?.find((u: any) => u.quality === "320kbps")?.url ||
+                song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
+                "";
+
+              let albumArt = song.image?.find((i: any) => i.quality === "500x500")?.url ||
+                song.image?.[song.image.length - 1]?.url ||
+                null;
+
+              if (albumArt && albumArt.includes("150x150")) {
+                albumArt = albumArt.replace("150x150", "500x500");
+              }
+
+              return {
+                id: song.id,
+                spotifyId: "",
+                title: song.name || song.title,
+                artist: artists,
+                album: song.album?.name || "Unknown Album",
+                albumArt,
+                duration: (song.duration || 0) * 1000,
+                trackNumber: null,
+                streamUrl,
+                quality: "high",
+                provider: "jiosaavn",
+              } as Song;
+            });
+          }
+        }
+
+        // Merge, preferring DB songs
+        const merged = [...dbSongs];
+        for (const ps of providerSongs) {
+          if (!merged.some(ds => ds.title.toLowerCase() === ps.title.toLowerCase() && ds.artist.toLowerCase() === ps.artist.toLowerCase())) {
+            merged.push(ps);
+          }
+        }
+
+        setResults(merged);
+      } catch (err) {
+        console.error("Search failed:", err);
       } finally {
         setLoading(false);
       }
