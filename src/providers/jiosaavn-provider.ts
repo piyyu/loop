@@ -1,73 +1,60 @@
 import type { MusicProvider } from "./music-provider";
 import type { AudioQuality, ProviderSong } from "@/types/music";
-import forge from "node-forge";
+
+const BASE_URL = "https://nepotuneapi.vercel.app";
 
 const QUALITY_MAP: Record<AudioQuality, string> = {
-  low: "_96.mp4",
-  medium: "_160.mp4",
-  high: "_320.mp4",
-  lossless: "_320.mp4",
+  low: "96kbps",
+  medium: "160kbps",
+  high: "320kbps",
+  lossless: "320kbps",
 };
 
 export class JioSaavnProvider implements MusicProvider {
   readonly name = "jiosaavn";
   readonly displayName = "JioSaavn";
 
-  // Shared fetcher to inject Indian geo-cookie and bypass Vercel IP blocks
-  private async fetchApi(endpoint: string, params: Record<string, string>) {
-    const url = new URL("https://www.jiosaavn.com/api.php");
-    url.searchParams.append("__call", endpoint);
-    url.searchParams.append("_format", "json");
-    url.searchParams.append("_marker", "0");
-    url.searchParams.append("api_version", "4");
-    url.searchParams.append("ctx", "web6dot0");
-
-    Object.keys(params).forEach((key) => url.searchParams.append(key, params[key]));
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Cookie": "geo=103.155.223.1%2CIN%2CMaharashtra%2CMumbai%2C400001; L=english,hindi;",
-      },
-    });
-
-    if (!response.ok) throw new Error(`JioSaavn API Error: ${response.status}`);
-    return response.json();
-  }
-
-  async searchSong(query: string, artist?: string): Promise<ProviderSong[]> {
-    const searchQuery = artist ? `${query} ${artist}` : query;
-
+  private async fetchApi<T>(endpoint: string): Promise<T | null> {
     try {
-      const data = await this.fetchApi("search.getResults", { q: searchQuery, n: "10", p: "1" });
-      const results = data.results || [];
-      return results.map((song: any) => this.mapToProviderSong(song));
+      const response = await fetch(`${BASE_URL}${endpoint}`, { cache: "no-store" });
+      if (!response.ok) return null;
+      const json = await response.json();
+      if (!json.success) return null;
+      return json.data;
     } catch (error) {
-      console.error("JioSaavn search error:", error);
-      return [];
-    }
-  }
-
-  async getSong(id: string): Promise<ProviderSong | null> {
-    try {
-      const data = await this.fetchApi("song.getDetails", { pids: id });
-      const song = data?.songs?.[0] || data?.[id];
-      if (!song) return null;
-      return this.mapToProviderSong(song);
-    } catch (error) {
-      console.error("JioSaavn getSong error:", error);
+      console.error(`JioSaavn API Error on ${endpoint}:`, error);
       return null;
     }
   }
 
-  async getStreamUrl(id: string, quality: AudioQuality = "high"): Promise<string> {
-    const song = await this.getSong(id);
-    if (!song || !song.streamUrl) throw new Error(`Song not found: ${id}`);
+  async searchSong(query: string, artist?: string): Promise<ProviderSong[]> {
+    const searchQuery = artist ? `${query} ${artist}` : query;
+    const data = await this.fetchApi<any>(`/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=10`);
+    const results = data?.results || [];
+    return results.map((song: any) => this.mapToProviderSong(song));
+  }
 
-    // JioSaavn stream URLs have qualities like _96.mp4, _160.mp4, _320.mp4
-    const suffix = QUALITY_MAP[quality];
-    return song.streamUrl.replace(/_96\.mp4|_160\.mp4|_320\.mp4/, suffix);
+  async getSong(id: string): Promise<ProviderSong | null> {
+    const data = await this.fetchApi<any[]>(`/api/songs/${encodeURIComponent(id)}`);
+    const song = data?.[0];
+    if (!song) return null;
+    return this.mapToProviderSong(song);
+  }
+
+  async getStreamUrl(id: string, quality: AudioQuality = "high"): Promise<string> {
+    const data = await this.fetchApi<any[]>(`/api/songs/${encodeURIComponent(id)}`);
+    const song = data?.[0];
+    if (!song) throw new Error(`Song not found: ${id}`);
+
+    const targetQuality = QUALITY_MAP[quality];
+    const downloadUrls = song.downloadUrl || [];
+    
+    const match =
+      downloadUrls.find((u: any) => u.quality === targetQuality) ||
+      downloadUrls[downloadUrls.length - 1]; // highest available
+
+    if (!match) throw new Error(`No stream URL available for: ${id}`);
+    return match.url;
   }
 
   async download(id: string, quality: AudioQuality = "high"): Promise<ArrayBuffer> {
@@ -81,46 +68,35 @@ export class JioSaavnProvider implements MusicProvider {
     return response.arrayBuffer();
   }
 
-  private decryptUrl(encryptedMediaUrl: string): string {
-    if (!encryptedMediaUrl) return "";
-    try {
-      const key = "38346591";
-      const encrypted = forge.util.decode64(encryptedMediaUrl);
-      const decipher = forge.cipher.createDecipher("DES-ECB", forge.util.createBuffer(key));
-      decipher.start({ iv: forge.util.createBuffer("") });
-      decipher.update(forge.util.createBuffer(encrypted));
-      decipher.finish();
-      return decipher.output.getBytes();
-    } catch (error) {
-      console.error("Decryption error:", error);
-      return "";
-    }
-  }
-
   private mapToProviderSong(song: any): ProviderSong {
-    // Extract primary artists
-    const artistMap = song.more_info?.artistMap;
-    const artists = artistMap?.primary_artists?.map((a: any) => a.name).join(", ") 
-      || song.subtitle 
-      || "Unknown Artist";
+    // Extract artists
+    const artists =
+      song.artists?.primary?.map((a: any) => a.name).join(", ") ||
+      song.artists?.all?.map((a: any) => a.name).join(", ") ||
+      "Unknown Artist";
 
-    // Decrypt the media url to get the streamable link (defaults to 96kbps, getStreamUrl modifies this)
-    const encryptedUrl = song.more_info?.encrypted_media_url || song.more_info?.encrypted_drm_media_url;
-    const streamUrl = this.decryptUrl(encryptedUrl);
+    // Extract best stream url (320kbps or fallback)
+    const streamUrl =
+      song.downloadUrl?.find((u: any) => u.quality === "320kbps")?.url ||
+      song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
+      "";
 
-    // Fix image URL resolution to high quality
-    let albumArt = song.image || null;
-    if (albumArt) {
+    // Extract high-quality image
+    let albumArt = song.image?.find((i: any) => i.quality === "500x500")?.url ||
+      song.image?.[song.image.length - 1]?.url ||
+      null;
+
+    if (albumArt && albumArt.includes("150x150")) {
       albumArt = albumArt.replace("150x150", "500x500");
     }
 
     return {
       id: song.id,
-      title: song.title || song.name,
+      title: song.name || song.title,
       artist: artists,
-      album: song.more_info?.album || song.album || "Unknown Album",
+      album: song.album?.name || "Unknown Album",
       albumArt,
-      duration: parseInt(song.more_info?.duration || song.duration || "0", 10) * 1000,
+      duration: (song.duration || 0) * 1000, // convert seconds to ms
       streamUrl,
       quality: "high",
       provider: this.name,
