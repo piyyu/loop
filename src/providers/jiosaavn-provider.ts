@@ -1,12 +1,27 @@
 /**
- * JioSaavn music provider implementation using REST API proxy.
- * Replaces jiosaavn-sdk to avoid Vercel US IP geoblocking.
+ * JioSaavn music provider implementation using the local jiosaavn-sdk.
  */
 
 import type { MusicProvider } from "./music-provider";
 import type { AudioQuality, ProviderSong } from "@/types/music";
+import { SearchService, SongService } from "jiosaavn-sdk";
 
 interface JioSaavnSearchResult {
+  id: string;
+  name: string;
+  artists?: {
+    primary?: { name: string }[];
+    all?: { name: string }[];
+  };
+  album?: {
+    name: string | null;
+  };
+  image?: { url: string; quality: string }[];
+  duration?: number | null;
+  downloadUrl?: { url: string; quality: string }[];
+}
+
+interface JioSaavnSongDetail {
   id: string;
   name: string;
   artists?: {
@@ -32,24 +47,26 @@ export class JioSaavnProvider implements MusicProvider {
   readonly name = "jiosaavn";
   readonly displayName = "JioSaavn";
 
-  private get apiUrl() {
-    return process.env.NEXT_PUBLIC_JIOSAAVN_API_URL || "https://saavn.sumit.co";
+  private searchService: SearchService;
+  private songService: SongService;
+
+  constructor() {
+    this.searchService = new SearchService();
+    this.songService = new SongService();
   }
 
   async searchSong(query: string, artist?: string): Promise<ProviderSong[]> {
     const searchQuery = artist ? `${query} ${artist}` : query;
 
     try {
-      const response = await fetch(
-        `${this.apiUrl}/api/search/songs?query=${encodeURIComponent(searchQuery)}&page=1&limit=10`
-      );
-      if (!response.ok) return [];
-      
-      const data = await response.json();
-      const results = data.data?.results || [];
+      const data = await this.searchService.searchSongs({
+        query: searchQuery,
+        page: 1,
+        limit: 10,
+      });
+      const results = data.results || [];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return results.map((song: any) => this.mapToProviderSong(song));
+      return results.map((song) => this.mapToProviderSong(song as any));
     } catch (error) {
       console.error("JioSaavn search error:", error);
       return [];
@@ -58,15 +75,11 @@ export class JioSaavnProvider implements MusicProvider {
 
   async getSong(id: string): Promise<ProviderSong | null> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/songs/${id}`);
-      if (!response.ok) return null;
-      
-      const data = await response.json();
-      const song = data.data?.[0];
+      const songs = await this.songService.getSongByIds({ songIds: id });
+      const song = songs?.[0];
 
       if (!song) return null;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return this.mapToProviderSong(song as any);
     } catch (error) {
       console.error("JioSaavn getSong error:", error);
@@ -81,6 +94,7 @@ export class JioSaavnProvider implements MusicProvider {
     const song = await this.getSong(id);
     if (!song) throw new Error(`Song not found: ${id}`);
 
+    // Try to find the requested quality, fall back to highest available
     const targetQuality = QUALITY_MAP[quality];
     const downloadUrls = await this.getDownloadUrls(id);
 
@@ -111,11 +125,8 @@ export class JioSaavnProvider implements MusicProvider {
     id: string
   ): Promise<{ url: string; quality: string }[]> {
     try {
-      const response = await fetch(`${this.apiUrl}/api/songs/${id}`);
-      if (!response.ok) return [];
-      
-      const data = await response.json();
-      const song = data.data?.[0];
+      const songs = await this.songService.getSongByIds({ songIds: id });
+      const song = songs?.[0];
 
       return song?.downloadUrl || [];
     } catch {
@@ -123,20 +134,21 @@ export class JioSaavnProvider implements MusicProvider {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private mapToProviderSong(song: JioSaavnSearchResult | any): ProviderSong {
+  private mapToProviderSong(
+    song: JioSaavnSearchResult | JioSaavnSongDetail
+  ): ProviderSong {
     const artists =
-      song.artists?.primary?.map((a: any) => a.name).join(", ") ||
-      song.artists?.all?.map((a: any) => a.name).join(", ") ||
+      song.artists?.primary?.map((a) => a.name).join(", ") ||
+      song.artists?.all?.map((a) => a.name).join(", ") ||
       "Unknown Artist";
 
     const albumArt =
-      song.image?.find((i: any) => i.quality === "500x500")?.url ||
+      song.image?.find((i) => i.quality === "500x500")?.url ||
       song.image?.[song.image.length - 1]?.url ||
       null;
 
     const streamUrl =
-      song.downloadUrl?.find((u: any) => u.quality === "320kbps")?.url ||
+      song.downloadUrl?.find((u) => u.quality === "320kbps")?.url ||
       song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
       "";
 
@@ -146,7 +158,7 @@ export class JioSaavnProvider implements MusicProvider {
       artist: artists,
       album: song.album?.name || "Unknown Album",
       albumArt,
-      duration: (song.duration || 0) * 1000,
+      duration: (song.duration || 0) * 1000, // convert seconds to ms
       streamUrl,
       quality: "high",
       provider: this.name,

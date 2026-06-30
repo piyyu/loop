@@ -19,6 +19,7 @@
     "framer-motion": "^12.42.0",
     "howler": "^2.2.4",
     "idb": "^8.0.3",
+    "jiosaavn-sdk": "^1.0.0",
     "lucide-react": "^1.22.0",
     "next": "16.2.9",
     "next-auth": "^5.0.0-beta.31",
