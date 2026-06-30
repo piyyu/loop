@@ -41,6 +41,7 @@ function createPrismaClient(): PrismaClient {
     connectionTimeoutMillis: 10000,
     // Supabase direct URLs (db.xxxx.supabase.co) only support IPv6 now.
     // Node.js pg driver defaults to IPv4 which causes DNS resolution failure.
+    // @ts-ignore - 'family' is missing in @types/pg PoolConfig but valid for net.Socket
     family: connectionString.includes("supabase.co") ? 6 : undefined,
     // SSL required for most cloud Postgres providers
     ssl:
