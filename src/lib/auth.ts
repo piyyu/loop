@@ -17,11 +17,13 @@ function isMockMode(): boolean {
 }
 
 function getBaseUrl(): string {
-  // In production, NEXTAUTH_URL should be set to the deployed URL.
-  // Fallback to request-relative URLs if not set.
-  return process.env.NEXTAUTH_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://127.0.0.1:3000";
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://127.0.0.1:3000";
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
