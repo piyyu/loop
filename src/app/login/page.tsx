@@ -88,22 +88,22 @@ export default function LoginPage() {
               </p>
 
               <motion.button
-                onClick={() => signIn("credentials", { callbackUrl: "/" })}
-                className="w-full py-2 px-4 rounded font-bold mt-2"
+                onClick={() => signIn("spotify", { callbackUrl: "/" })}
+                className="w-full py-2 px-4 rounded font-bold mt-2 flex items-center justify-center gap-2"
                 style={{
-                  background: "#4A90D9",
+                  background: "#1DB954",
                   color: "#FFFFFF",
                   fontSize: "12px",
                   fontFamily: "Chicago, system-ui",
                   border: "none",
                   cursor: "pointer",
-                  boxShadow: "0 2px 8px rgba(74,144,217,0.3)",
+                  boxShadow: "0 2px 8px rgba(29,185,84,0.3)",
                 }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                aria-label="Demo Login"
+                aria-label="Sign In with Spotify"
               >
-                Demo Login
+                Sign In with Spotify
               </motion.button>
             </div>
           </div>

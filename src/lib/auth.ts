@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import Spotify from "next-auth/providers/spotify";
-import Credentials from "next-auth/providers/credentials";
 
 const SPOTIFY_SCOPES = [
   "user-read-email",
@@ -41,17 +40,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ? `${getBaseUrl()}/api/auth/mock/spotify/userinfo`
         : undefined,
     }),
-    Credentials({
-      name: "Development Bypass",
-      credentials: {},
-      async authorize() {
-        return {
-          id: "dev-user",
-          name: "Loop Retro User",
-          email: "dev@loop.music",
-        };
-      },
-    }),
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
@@ -60,9 +48,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
         token.spotifyId = (profile as Record<string, unknown>).id as string;
-      } else if (account && account.provider === "credentials") {
-        token.accessToken = "mock-dev-token";
-        token.spotifyId = "mock-spotify-id";
       }
 
       // Refresh token if expired
