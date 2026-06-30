@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { formatSeconds } from "@/utils/format";
+import { getAudioFile, saveAudioFile, deleteAudioFile } from "@/utils/storage";
 import {
   Play,
   Pause,
@@ -13,6 +15,9 @@ import {
   Repeat,
   Volume2,
   VolumeX,
+  Heart,
+  Download,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -41,10 +46,113 @@ export function NowPlayingScreen() {
   } = usePlayerStore();
   const { darkMode } = useSettingsStore();
 
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const textColor = darkMode ? "#C8D8B8" : "#1a1a1a";
   const mutedColor = darkMode ? "#8A9A7A" : "#5A6A4A";
   const progressBg = darkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)";
   const progressFill = darkMode ? "#7AA05A" : "#4A7A2A";
+
+  // Check favorited & downloaded states when currentSong changes
+  useEffect(() => {
+    if (!currentSong) return;
+
+    // Check IndexedDB
+    getAudioFile(currentSong.id).then((file) => {
+      setIsDownloaded(!!file);
+    });
+
+    // Check Database Favorites
+    fetch("/api/favorites")
+      .then((res) => res.json())
+      .then((data) => {
+        const favs = data.songs || [];
+        setIsFavorite(favs.some((s: any) => s.id === currentSong.id));
+      })
+      .catch(() => {});
+  }, [currentSong]);
+
+  const toggleFavoriteState = async () => {
+    if (!currentSong) return;
+
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          songId: currentSong.id,
+          song: currentSong,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setIsFavorite(data.favorited);
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
+
+  const toggleDownloadState = async () => {
+    if (!currentSong) return;
+
+    if (isDownloaded) {
+      try {
+        await deleteAudioFile(currentSong.id);
+        await fetch(`/api/downloads?songId=${currentSong.id}`, {
+          method: "DELETE",
+        });
+        setIsDownloaded(false);
+      } catch (err) {
+        console.error("Failed to delete download:", err);
+      }
+    } else {
+      setIsDownloading(true);
+      try {
+        let downloadUrl = currentSong.streamUrl;
+        if (!downloadUrl) {
+          const resStream = await fetch(
+            `/api/music/stream?id=${encodeURIComponent(currentSong.id)}&provider=jiosaavn`
+          );
+          if (resStream.ok) {
+            const dataStream = await resStream.json();
+            downloadUrl = dataStream.streamUrl;
+          }
+        }
+
+        if (!downloadUrl) throw new Error("No stream URL found");
+
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error("Network error downloading file");
+
+        const buffer = await response.arrayBuffer();
+        await saveAudioFile(currentSong.id, buffer, "audio/mp4");
+
+        await fetch("/api/downloads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            songId: currentSong.id,
+            fileKey: `audio-${currentSong.id}`,
+            fileSize: buffer.byteLength,
+            song: {
+              ...currentSong,
+              streamUrl: downloadUrl,
+            },
+          }),
+        });
+
+        setIsDownloaded(true);
+      } catch (err) {
+        console.error("Failed to download song:", err);
+      } finally {
+        setIsDownloading(false);
+      }
+    }
+  };
 
   if (!currentSong) {
     return (
@@ -141,6 +249,45 @@ export function NowPlayingScreen() {
             }}
           >
             {currentSong.album}
+          </div>
+
+          {/* Favorites & Downloads buttons */}
+          <div className="flex gap-3 mt-2 flex-wrap">
+            <button
+              onClick={toggleFavoriteState}
+              className="flex items-center gap-1 text-[10px] cursor-pointer hover:opacity-80 transition-opacity active:scale-95"
+              style={{
+                color: isFavorite ? "#D94A4A" : mutedColor,
+                fontFamily: "Chicago, system-ui",
+              }}
+              title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+            >
+              <Heart size={11} fill={isFavorite ? "currentColor" : "none"} />
+              <span>{isFavorite ? "Liked" : "Like"}</span>
+            </button>
+            <button
+              onClick={toggleDownloadState}
+              disabled={isDownloading}
+              className="flex items-center gap-1 text-[10px] cursor-pointer hover:opacity-80 transition-opacity active:scale-95 disabled:opacity-50"
+              style={{
+                color: isDownloaded ? progressFill : mutedColor,
+                fontFamily: "Chicago, system-ui",
+              }}
+              title={isDownloaded ? "Delete offline file" : "Download song"}
+            >
+              {isDownloading ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <Download size={11} />
+              )}
+              <span>
+                {isDownloading
+                  ? "Downloading..."
+                  : isDownloaded
+                  ? "Offline"
+                  : "Download"}
+              </span>
+            </button>
           </div>
         </div>
       </div>

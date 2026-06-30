@@ -30,10 +30,25 @@ const createPrismaClient = () => {
   if (!connectionString) {
     // Return standard client as fallback, Prisma 7 will error if query is executed without options,
     // but this prevents crash during static build page analysis.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return new PrismaClient({} as any);
   }
   connectionString = getNativeConnectionString(connectionString);
-  const pool = new pg.Pool({ connectionString });
+
+  const pool = new pg.Pool({
+    connectionString,
+    max: process.env.NODE_ENV === "production" ? 5 : 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
+    // SSL required for most cloud Postgres providers
+    ssl:
+      connectionString.includes("supabase.co") ||
+      connectionString.includes("neon.tech") ||
+      connectionString.includes("railway.app")
+        ? { rejectUnauthorized: false }
+        : undefined,
+  });
+
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 };

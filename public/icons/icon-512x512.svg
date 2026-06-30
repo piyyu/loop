@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+    <rect width="512" height="512" rx="76.8" fill="#E8E8ED"/>
+    <text x="256" y="317.44" font-size="230.4" font-family="system-ui, sans-serif" font-weight="700" text-anchor="middle" fill="#1a1a1a">∞</text>
+    <text x="256" y="419.84" font-size="61.44" font-family="system-ui, sans-serif" font-weight="600" text-anchor="middle" fill="#5A6A4A" letter-spacing="10.24">LOOP</text>
+  </svg>

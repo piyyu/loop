@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`}>
       <head>
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.svg" />
       </head>
       <body className="min-h-full flex flex-col antialiased">
         <Providers>{children}</Providers>

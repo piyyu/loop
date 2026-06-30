@@ -104,7 +104,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   next: () => {
-    const { queue, queueIndex, repeat, shuffle } = get();
+    const { queue, queueIndex, repeat } = get();
     if (queue.length === 0) return;
 
     let nextIndex: number;

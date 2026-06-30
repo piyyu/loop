@@ -10,23 +10,36 @@ const SPOTIFY_SCOPES = [
   "user-library-read",
 ].join(" ");
 
+function isMockMode(): boolean {
+  return (
+    process.env.SPOTIFY_CLIENT_ID === "mock-spotify-client-id" ||
+    !process.env.SPOTIFY_CLIENT_ID
+  );
+}
+
+function getBaseUrl(): string {
+  // In production, NEXTAUTH_URL should be set to the deployed URL.
+  // Fallback to request-relative URLs if not set.
+  return process.env.NEXTAUTH_URL || process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://127.0.0.1:3000";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Spotify({
       clientId: process.env.SPOTIFY_CLIENT_ID || "mock-spotify-client-id",
-      clientSecret: process.env.SPOTIFY_CLIENT_SECRET || "mock-spotify-client-secret",
-      authorization:
-        process.env.SPOTIFY_CLIENT_ID === "mock-spotify-client-id" || !process.env.SPOTIFY_CLIENT_ID
-          ? `${process.env.NEXTAUTH_URL || "http://127.0.0.1:3000"}/api/auth/mock/spotify/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`
-          : `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`,
-      token:
-        process.env.SPOTIFY_CLIENT_ID === "mock-spotify-client-id" || !process.env.SPOTIFY_CLIENT_ID
-          ? `${process.env.NEXTAUTH_URL || "http://127.0.0.1:3000"}/api/auth/mock/spotify/token`
-          : undefined,
-      userinfo:
-        process.env.SPOTIFY_CLIENT_ID === "mock-spotify-client-id" || !process.env.SPOTIFY_CLIENT_ID
-          ? `${process.env.NEXTAUTH_URL || "http://127.0.0.1:3000"}/api/auth/mock/spotify/userinfo`
-          : undefined,
+      clientSecret:
+        process.env.SPOTIFY_CLIENT_SECRET || "mock-spotify-client-secret",
+      authorization: isMockMode()
+        ? `${getBaseUrl()}/api/auth/mock/spotify/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`
+        : `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`,
+      token: isMockMode()
+        ? `${getBaseUrl()}/api/auth/mock/spotify/token`
+        : undefined,
+      userinfo: isMockMode()
+        ? `${getBaseUrl()}/api/auth/mock/spotify/userinfo`
+        : undefined,
     }),
     Credentials({
       name: "Development Bypass",
@@ -101,6 +114,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: {
     signIn: "/login",
   },
+  trustHost: true,
 });
 
 // Extend types for session

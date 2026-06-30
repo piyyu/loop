@@ -3,7 +3,6 @@
 import { create } from "zustand";
 import type {
   ScreenId,
-  MenuItem,
   Screen,
   TransitionDirection,
 } from "@/types/navigation";
