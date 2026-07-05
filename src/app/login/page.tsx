@@ -88,7 +88,7 @@ export default function LoginPage() {
               </p>
 
               <motion.button
-                onClick={() => signIn("spotify", { callbackUrl: "/" })}
+                onClick={() => signIn("spotify", { callbackUrl: "/" }, { mock: "true" })}
                 className="w-full py-2 px-4 rounded font-bold mt-2 flex items-center justify-center gap-2"
                 style={{
                   background: "#1DB954",

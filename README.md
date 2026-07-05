@@ -1,11 +1,11 @@
-# Loop — Retro iPod Music Player
+# Loop — Retro Music Player
 
-A production-ready Next.js 15 application built with the App Router and TypeScript. Loop looks and behaves like a classic skeuomorphic Apple iPod Classic. It integrates with Spotify for playlist/metadata syncing, and uses a pluggable music provider abstraction to stream actual audio from an external source (JioSaavn by default).
+A production-ready Next.js 15 application built with the App Router and TypeScript. Loop looks and behaves like a classic skeuomorphic music player. It integrates with Spotify for playlist/metadata syncing, and uses a pluggable music provider abstraction to stream actual audio from an external source (JioSaavn by default).
 
 ## Features
 
 - **Virtual Click Wheel**: Unified touch and mouse interactions. Rotating scrolls list menus with subtle mechanical tick sounds and optional haptic feedback. Center selects, and quadrant buttons map to Play/Pause, Next/Previous, and Menu (Back).
-- **Classic UI & Navigation**: Skeuomorphic iPod screen styling, slide left/right transitions, and a classic list-based menu hierarchy.
+- **Classic UI & Navigation**: Skeuomorphic screen styling, slide left/right transitions, and a classic list-based menu hierarchy.
 - **Spotify Metadata Sync**: Seamless login via Spotify OAuth to import user profile, playlists, and tracks without using Spotify for audio streaming.
 - **Pluggable Music Provider**: Audio streams from an abstract provider layer. Includes a JioSaavn implementation by default.
 - **Offline & PWA Support**: Manifest, service worker asset caching, and offline playback via IndexedDB audio storage.

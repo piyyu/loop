@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Spotify from "next-auth/providers/spotify";
+import Credentials from "next-auth/providers/credentials";
 
 const SPOTIFY_SCOPES = [
   "user-read-email",
@@ -28,32 +29,49 @@ function getBaseUrl(): string {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    Spotify({
-      clientId: process.env.SPOTIFY_CLIENT_ID || "mock-spotify-client-id",
-      clientSecret:
-        process.env.SPOTIFY_CLIENT_SECRET || "mock-spotify-client-secret",
-      authorization: isMockMode()
-        ? `${getBaseUrl()}/api/auth/mock/spotify/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`
-        : `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`,
-      token: isMockMode()
-        ? `${getBaseUrl()}/api/auth/mock/spotify/token`
-        : undefined,
-      userinfo: isMockMode()
-        ? `${getBaseUrl()}/api/auth/mock/spotify/userinfo`
-        : undefined,
-    }),
+    isMockMode()
+      ? Credentials({
+          id: "spotify",
+          name: "Mock Spotify",
+          credentials: {},
+          async authorize() {
+            return {
+              id: "mock-spotify-id",
+              name: "Loop Demo User",
+              email: "dev@loop.music",
+            };
+          },
+        })
+      : Spotify({
+          clientId: process.env.SPOTIFY_CLIENT_ID || "mock-spotify-client-id",
+          clientSecret:
+            process.env.SPOTIFY_CLIENT_SECRET || "mock-spotify-client-secret",
+          authorization: `https://accounts.spotify.com/authorize?scope=${encodeURIComponent(SPOTIFY_SCOPES)}`,
+        }),
   ],
   callbacks: {
     async jwt({ token, account, profile }) {
-      if (account && profile) {
-        token.accessToken = account.access_token;
-        token.refreshToken = account.refresh_token;
-        token.expiresAt = account.expires_at;
-        token.spotifyId = (profile as Record<string, unknown>).id as string;
+      if (account) {
+        if (account.type === "credentials") {
+          token.accessToken = "mock-spotify-access-token";
+          token.refreshToken = "mock-spotify-refresh-token";
+          token.expiresAt = Math.floor(Date.now() / 1000) + 3600;
+          token.spotifyId = "mock-spotify-id";
+        } else if (profile) {
+          token.accessToken = account.access_token;
+          token.refreshToken = account.refresh_token;
+          token.expiresAt = account.expires_at;
+          token.spotifyId = (profile as Record<string, unknown>).id as string;
+        }
       }
 
       // Refresh token if expired
       if (token.expiresAt && Date.now() >= (token.expiresAt as number) * 1000) {
+        if (token.refreshToken === "mock-spotify-refresh-token") {
+          token.expiresAt = Math.floor(Date.now() / 1000) + 3600;
+          return token;
+        }
+
         try {
           const response = await fetch(
             "https://accounts.spotify.com/api/token",
