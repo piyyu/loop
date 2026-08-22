@@ -55,7 +55,7 @@ export function ClickWheel() {
           pop();
           break;
         case "play":
-          togglePlay();
+          push({ id: "now-playing", title: "Now Playing" });
           break;
         case "next":
           next();
@@ -64,11 +64,7 @@ export function ClickWheel() {
           previous();
           break;
         case "center":
-          if (useNavigationStore.getState().currentScreen.id === "now-playing") {
-            togglePlay();
-          } else {
-            select();
-          }
+          togglePlay();
           break;
       }
 
@@ -164,12 +160,13 @@ export function ClickWheel() {
           </svg>
         </button>
 
-        {/* Play/Pause — bottom */}
+        {/* Currently Playing — bottom */}
         <button
-          className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10 p-3 transition-opacity cursor-pointer active:scale-95"
+          className="absolute bottom-5 left-1/2 -translate-x-1/2 font-bold tracking-widest text-[11px] uppercase z-10 px-4 py-2 transition-opacity cursor-pointer active:scale-95"
           style={{
             color: textColor,
             opacity: activeButton === "play" ? 0.6 : 0.8,
+            fontFamily: "'Chicago', 'SF Pro Text', system-ui",
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
@@ -178,16 +175,13 @@ export function ClickWheel() {
             e.stopPropagation();
             handleButtonPress("play");
           }}
-          aria-label="Play / Pause"
+          aria-label="Now Playing"
         >
-          <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor">
-            <path d="M1 1v10l7-5-7-5z" />
-            <path d="M11 1h2.5v10H11zm4 0h2.5v10H15z" />
-          </svg>
+          PLAYING
         </button>
       </div>
 
-      {/* Center select button */}
+      {/* Center Play/Pause button */}
       <motion.button
         className="absolute rounded-full z-20 border border-black/5 dark:border-white/5 flex items-center justify-center left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{
@@ -208,8 +202,24 @@ export function ClickWheel() {
           e.stopPropagation();
           handleButtonPress("center");
         }}
-        aria-label="Select"
-      />
+        aria-label="Play Pause"
+      >
+        <svg
+          width="14"
+          height="12"
+          viewBox="0 0 14 12"
+          fill="currentColor"
+          style={{
+            opacity: 0.45,
+            color: darkMode ? "#FFFFFF" : colors.wheelText,
+          }}
+        >
+          {/* Play triangle */}
+          <path d="M1 1v10l5-5-5-5z" />
+          {/* Pause bars */}
+          <path d="M9 1h1.5v10H9zm3 0h1.5v10H12z" />
+        </svg>
+      </motion.button>
     </div>
   );
 }
