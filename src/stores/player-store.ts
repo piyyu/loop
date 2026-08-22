@@ -31,7 +31,7 @@ interface PlayerStore {
   next: () => void;
   previous: () => void;
   seek: (position: number) => void;
-  requestSeek: (position: number) => void;
+  requestSeek: (position: number, isUserAction?: boolean) => void;
   setProgress: (progress: number) => void;
   setDuration: (duration: number) => void;
   setVolume: (volume: number) => void;
@@ -116,6 +116,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   next: () => {
+    if (useRoomStore.getState().isInRoom()) {
+      void useRoomStore.getState().sendAction({ type: "skip" });
+      return;
+    }
+
     const { queue, queueIndex, repeat } = get();
     if (queue.length === 0) return;
 
@@ -149,7 +154,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
     // If more than 3 seconds in, restart current song
     if (progress > 3) {
-      set({ progress: 0 });
+      get().requestSeek(0);
       return;
     }
 
@@ -164,7 +169,15 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   seek: (position) => set({ progress: position }),
-  requestSeek: (position) => set({ seekTo: position }),
+  requestSeek: (position, isUserAction = true) => {
+    if (isUserAction && useRoomStore.getState().isInRoom()) {
+      void useRoomStore.getState().sendAction({
+        type: "seek",
+        positionMs: Math.round(position * 1000),
+      });
+    }
+    set({ seekTo: position });
+  },
   setProgress: (progress) => set({ progress }),
   setDuration: (duration) => set({ duration }),
 

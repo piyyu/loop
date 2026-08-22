@@ -72,7 +72,7 @@ export function useRoomSync() {
       const expectedSec = room.expectedPositionMs() / 1000;
       const driftMs = (player.progress - expectedSec) * 1000;
       if (Math.abs(driftMs) > DRIFT_HARD_SEEK_MS) {
-        player.requestSeek(Math.max(0, expectedSec));
+        player.requestSeek(Math.max(0, expectedSec), false);
       }
     }, TICK_INTERVAL_MS);
 
