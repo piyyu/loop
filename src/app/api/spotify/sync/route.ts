@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  getUserProfile,
-  getUserPlaylists,
-  getPlaylistTracks,
-  getBestImage,
-} from "@/lib/spotify";
+import { getLocalUser } from "@/lib/user";
 
 async function syncMockData(spotifyId: string) {
   // Upsert mock user in DB
@@ -109,127 +103,16 @@ async function syncMockData(spotifyId: string) {
 
 /**
  * POST /api/spotify/sync
- * Syncs user's Spotify playlists and tracks to the database.
+ * Syncs the local user's playlists and tracks to the database.
  */
 export async function POST() {
   try {
-    const session = await auth();
-    if (!session?.accessToken || !session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (session.accessToken === "mock-dev-token" || session.accessToken === "mock-spotify-access-token") {
-      const result = await syncMockData(session.spotifyId);
-      return NextResponse.json({
-        success: true,
-        playlists: result.playlistsCount,
-        songs: result.songsCount,
-      });
-    }
-
-    const accessToken = session.accessToken;
-
-    let profile;
-    let spotifyPlaylists;
-    try {
-      // Try to sync with Spotify API
-      profile = await getUserProfile(accessToken);
-      spotifyPlaylists = await getUserPlaylists(accessToken);
-    } catch (apiError) {
-      console.warn("Spotify API sync failed (e.g. invalid client or token). Falling back to mock data sync:", apiError);
-      const result = await syncMockData(session.spotifyId);
-      return NextResponse.json({
-        success: true,
-        playlists: result.playlistsCount,
-        songs: result.songsCount,
-        fallback: true,
-      });
-    }
-
-    const user = await prisma.user.upsert({
-      where: { spotifyId: session.spotifyId },
-      update: {
-        name: profile.display_name,
-        email: profile.email,
-        image: profile.images?.[0]?.url,
-        accessToken,
-      },
-      create: {
-        spotifyId: session.spotifyId,
-        email: profile.email,
-        name: profile.display_name,
-        image: profile.images?.[0]?.url,
-        accessToken,
-      },
-    });
-
-    let totalSongs = 0;
-
-    for (const sp of spotifyPlaylists) {
-      // Upsert playlist
-      const playlist = await prisma.playlist.upsert({
-        where: { spotifyId: sp.id },
-        update: {
-          name: sp.name,
-          description: sp.description,
-          imageUrl: getBestImage(sp.images),
-        },
-        create: {
-          spotifyId: sp.id,
-          name: sp.name,
-          description: sp.description,
-          imageUrl: getBestImage(sp.images),
-          userId: user.id,
-        },
-      });
-
-      // Fetch tracks for this playlist
-      const tracks = await getPlaylistTracks(sp.id, accessToken);
-
-      for (const track of tracks) {
-        const artists = track.artists.map((a) => a.name).join(", ");
-        const albumArt = getBestImage(track.album.images);
-
-        // Upsert song
-        const song = await prisma.song.upsert({
-          where: { spotifyId: track.id },
-          update: {
-            title: track.name,
-            artist: artists,
-            album: track.album.name,
-            albumArt,
-            duration: track.duration_ms,
-            trackNumber: track.track_number,
-          },
-          create: {
-            spotifyId: track.id,
-            title: track.name,
-            artist: artists,
-            album: track.album.name,
-            albumArt,
-            duration: track.duration_ms,
-            trackNumber: track.track_number,
-          },
-        });
-
-        // Connect song to playlist
-        await prisma.playlist.update({
-          where: { id: playlist.id },
-          data: {
-            songs: {
-              connect: { id: song.id },
-            },
-          },
-        });
-
-        totalSongs++;
-      }
-    }
-
+    const user = await getLocalUser();
+    const result = await syncMockData(user.spotifyId);
     return NextResponse.json({
       success: true,
-      playlists: spotifyPlaylists.length,
-      songs: totalSongs,
+      playlists: result.playlistsCount,
+      songs: result.songsCount,
     });
   } catch (error) {
     console.error("Sync error:", error);

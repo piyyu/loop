@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLocalUser } from "@/lib/user";
 
 type FavoriteRow = {
   song: {
@@ -21,15 +21,7 @@ type FavoriteRow = {
  */
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ songs: [] });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-    if (!user) return NextResponse.json({ songs: [] });
+    const user = await getLocalUser();
 
     const favorites = await prisma.favorite.findMany({
       where: { userId: user.id },
@@ -60,10 +52,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getLocalUser();
 
     const { songId, song } = await request.json();
     if (!songId) {
@@ -71,13 +60,6 @@ export async function POST(request: NextRequest) {
         { error: "songId required" },
         { status: 400 }
       );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Ensure the song exists in the database

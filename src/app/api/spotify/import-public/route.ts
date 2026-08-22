@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLocalUser } from "@/lib/user";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { url } = await request.json();
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
@@ -64,15 +59,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.upsert({
-      where: { spotifyId: session.spotifyId },
-      update: {},
-      create: {
-        spotifyId: session.spotifyId,
-        email: session.user?.email || "unknown@loop.music",
-        name: session.user?.name || "Loop User",
-      },
-    });
+    const user = await getLocalUser();
 
     const playlistName = entity.name || entity.title || "Imported Playlist";
     const playlistDesc = entity.subtitle || "";

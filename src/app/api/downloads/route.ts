@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLocalUser } from "@/lib/user";
 
 type DownloadRow = {
   song: {
@@ -21,15 +21,7 @@ type DownloadRow = {
  */
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ songs: [] });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-    if (!user) return NextResponse.json({ songs: [] });
+    const user = await getLocalUser();
 
     const downloadsRaw = await prisma.download.findMany({
       where: { userId: user.id },
@@ -65,10 +57,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getLocalUser();
 
     const { songId, fileKey, fileSize, song } = await request.json();
     if (!songId || !fileKey) {
@@ -76,13 +65,6 @@ export async function POST(request: NextRequest) {
         { error: "songId and fileKey required" },
         { status: 400 }
       );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Ensure the song exists in the database
@@ -137,10 +119,7 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getLocalUser();
 
     const { searchParams } = new URL(request.url);
     const songId = searchParams.get("songId");
@@ -149,13 +128,6 @@ export async function DELETE(request: NextRequest) {
         { error: "songId required" },
         { status: 400 }
       );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     await prisma.download.deleteMany({

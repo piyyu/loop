@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getLocalUser } from "@/lib/user";
 
 /**
  * GET /api/spotify/playlists
@@ -9,21 +9,10 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.spotifyId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const playlistId = searchParams.get("id");
 
-    const user = await prisma.user.findUnique({
-      where: { spotifyId: session.spotifyId },
-    });
-
-    if (!user) {
-      return NextResponse.json({ playlists: [], songs: [] });
-    }
+    const user = await getLocalUser();
 
     if (playlistId) {
       // Return songs for a specific playlist

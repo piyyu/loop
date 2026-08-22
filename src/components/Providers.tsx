@@ -1,6 +1,5 @@
 "use client";
 
-import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
@@ -10,7 +9,7 @@ interface ProvidersProps {
 
 /**
  * Client-side providers wrapper.
- * Wraps the app with SessionProvider and QueryClientProvider.
+ * Wraps the app with QueryClientProvider.
  */
 export function Providers({ children }: ProvidersProps) {
   const [queryClient] = useState(
@@ -26,10 +25,6 @@ export function Providers({ children }: ProvidersProps) {
   );
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    </SessionProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }

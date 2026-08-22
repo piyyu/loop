@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession, signOut } from "next-auth/react";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
@@ -13,26 +12,9 @@ import type { AudioQuality } from "@/types/music";
  */
 export function SettingsScreen() {
   const settings = useSettingsStore();
-  const { data: session } = useSession();
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
-  const isRealSpotify = session?.accessToken && session.accessToken !== "mock-dev-token" && session.accessToken !== "mock-spotify-access-token";
-  const accountLabel = isRealSpotify
-    ? `Connected as ${session?.user?.name || "Spotify User"}`
-    : session?.user?.name || "Demo Mode";
-
   const items: MenuItem[] = [
-    {
-      id: "account",
-      label: "Spotify Account",
-      subtitle: accountLabel,
-      action: () => {
-        if (!isRealSpotify) {
-          // Redirect to login to connect real Spotify
-          window.location.href = "/login";
-        }
-      },
-    },
     {
       id: "sync",
       label: "Sync Playlists",
@@ -118,13 +100,6 @@ export function SettingsScreen() {
       label: "Statistics",
       hasArrow: true,
       screen: "stats" as const,
-    },
-    {
-      id: "logout",
-      label: "Logout",
-      action: () => {
-        signOut({ callbackUrl: "/login" });
-      },
     },
   ];
 
