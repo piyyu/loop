@@ -116,3 +116,29 @@ model Settings {
   hapticFeedback  Boolean @default(true)
   cacheSize       Int     @default(500) // MB
 }
+
+model Room {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  hostMemberId String
+  rev          Int          @default(0)
+  state        Json
+  lastActiveAt DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  members      RoomMember[]
+
+  @@index([lastActiveAt])
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  memberId String
+  name     String?
+  joinedAt DateTime @default(now())
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, memberId])
+  @@index([roomId])
+}

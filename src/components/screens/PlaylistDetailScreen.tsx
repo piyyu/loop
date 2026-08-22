@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { usePlayerStore } from "@/stores/player-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
 import type { Song } from "@/types/music";
+import { startPlayback } from "@/lib/playback";
 import { formatTime } from "@/utils/format";
 
 /**
@@ -13,7 +13,6 @@ import { formatTime } from "@/utils/format";
  */
 export function PlaylistDetailScreen() {
   const { currentScreen, push } = useNavigationStore();
-  const { setQueue } = usePlayerStore();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +55,7 @@ export function PlaylistDetailScreen() {
       icon: "▶",
       action: () => {
         if (songs.length > 0) {
-          setQueue(songs, 0);
+          startPlayback(songs, 0);
           push({ id: "now-playing", title: "Now Playing" });
         }
       },
@@ -68,7 +67,7 @@ export function PlaylistDetailScreen() {
       action: () => {
         if (songs.length > 0) {
           const shuffled = [...songs].sort(() => Math.random() - 0.5);
-          setQueue(shuffled, 0);
+          startPlayback(shuffled, 0);
           push({ id: "now-playing", title: "Now Playing" });
         }
       },
@@ -78,7 +77,7 @@ export function PlaylistDetailScreen() {
       label: song.title,
       subtitle: `${song.artist} · ${formatTime(song.duration)}`,
       action: () => {
-        setQueue(songs, index);
+        startPlayback(songs, index);
         push({ id: "now-playing", title: "Now Playing" });
       },
     })),

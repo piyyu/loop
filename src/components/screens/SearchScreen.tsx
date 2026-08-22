@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { usePlayerStore } from "@/stores/player-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
 import type { Song } from "@/types/music";
+import { startPlayback } from "@/lib/playback";
 import { formatTime } from "@/utils/format";
 
 /**
@@ -15,7 +15,6 @@ import { formatTime } from "@/utils/format";
  */
 export function SearchScreen() {
   const { push } = useNavigationStore();
-  const { setQueue } = usePlayerStore();
   const { darkMode } = useSettingsStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Song[]>([]);
@@ -67,7 +66,7 @@ export function SearchScreen() {
     label: song.title,
     subtitle: `${song.artist} · ${formatTime(song.duration)}`,
     action: () => {
-      setQueue(results, index);
+      startPlayback(results, index);
       push({ id: "now-playing", title: "Now Playing" });
     },
   }));

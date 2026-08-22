@@ -52,6 +52,13 @@ const HOME_SCREEN: Screen = {
       hasArrow: true,
     },
     {
+      id: "party",
+      label: "Listen Together",
+      icon: "∞",
+      screen: "party",
+      hasArrow: true,
+    },
+    {
       id: "settings",
       label: "Settings",
       icon: "⚙",

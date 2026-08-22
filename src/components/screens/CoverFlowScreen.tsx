@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { startPlayback } from "@/lib/playback";
 import { usePlayerStore } from "@/stores/player-store";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -13,7 +14,7 @@ import Image from "next/image";
  * Classic iPod Cover Flow experience with reflections.
  */
 export function CoverFlowScreen() {
-  const { queue, currentSong, setQueue } = usePlayerStore();
+  const { queue, currentSong } = usePlayerStore();
   const { push } = useNavigationStore();
   const { darkMode } = useSettingsStore();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -80,7 +81,7 @@ export function CoverFlowScreen() {
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               onClick={() => {
                 if (isActive) {
-                  setQueue(songs, realIndex);
+                  startPlayback(songs, realIndex);
                   push({ id: "now-playing", title: "Now Playing" });
                 } else {
                   useNavigationStore.getState().setSelectedIndex(realIndex);

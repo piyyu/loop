@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { usePlayerStore } from "@/stores/player-store";
+import { useRoomStore } from "@/stores/room-store";
+import {
+  registerAudioElement,
+  unregisterAudioElement,
+} from "@/lib/audio-registry";
 import { getAudioFile, createBlobUrl } from "@/utils/storage";
 
 /**
@@ -34,6 +39,7 @@ export function useAudioPlayer() {
     if (!audioRef.current) {
       audioRef.current = new Audio();
       audioRef.current.preload = "auto";
+      registerAudioElement(audioRef.current);
     }
 
     const audio = audioRef.current;
@@ -51,6 +57,11 @@ export function useAudioPlayer() {
     };
 
     const onEnded = () => {
+      // In a listen-together room, song advance is a shared state write
+      if (useRoomStore.getState().isInRoom()) {
+        void useRoomStore.getState().sendAction({ type: "skip" });
+        return;
+      }
       next();
     };
 
@@ -70,6 +81,7 @@ export function useAudioPlayer() {
     audio.addEventListener("canplay", onCanPlay);
 
     return () => {
+      unregisterAudioElement(audio);
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("durationchange", onDurationChange);
       audio.removeEventListener("ended", onEnded);
@@ -115,29 +127,23 @@ export function useAudioPlayer() {
           return;
         }
 
-        // Resolve stream URL via client-side proxy API
+        // Resolve stream URL through the app's own search API (server-side provider)
         const searchRes = await fetch(
-          `https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(`${currentSong.title} ${currentSong.artist}`)}&limit=5`
+          `/api/music/search?q=${encodeURIComponent(`${currentSong.title} ${currentSong.artist}`)}`
         );
 
         if (searchRes.ok) {
           const searchData = await searchRes.json();
-          if (searchData.success && searchData.data?.results) {
-            const match = searchData.data.results.find((s: any) => s.downloadUrl && s.downloadUrl.length > 0);
-            
-            if (match) {
-              const streamUrl = 
-                match.downloadUrl.find((u: any) => u.quality === "320kbps")?.url || 
-                match.downloadUrl[match.downloadUrl.length - 1]?.url;
-                
-              if (streamUrl) {
-                audio.src = streamUrl;
-                audio.load();
-                if (isPlaying) await audio.play();
-                setLoading(false);
-                return;
-              }
-            }
+          const results: Array<{ id: string; streamUrl?: string }> =
+            searchData.songs || [];
+          const match = results.find((s) => s.streamUrl);
+
+          if (match?.streamUrl) {
+            audio.src = match.streamUrl;
+            audio.load();
+            if (isPlaying) await audio.play();
+            setLoading(false);
+            return;
           }
         }
 

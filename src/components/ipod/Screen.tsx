@@ -14,6 +14,9 @@ import { FavoritesScreen } from "@/components/screens/FavoritesScreen";
 import { DownloadsScreen } from "@/components/screens/DownloadsScreen";
 import { RecentlyPlayedScreen } from "@/components/screens/RecentlyPlayedScreen";
 import { SearchScreen } from "@/components/screens/SearchScreen";
+import { PartyScreen } from "@/components/screens/PartyScreen";
+import { PartyJoinScreen } from "@/components/screens/PartyJoinScreen";
+import { PartyRoomScreen } from "@/components/screens/PartyRoomScreen";
 import { SettingsScreen } from "@/components/screens/SettingsScreen";
 import { NowPlayingScreen } from "@/components/screens/NowPlayingScreen";
 import { CoverFlowScreen } from "@/components/screens/CoverFlowScreen";
@@ -108,6 +111,12 @@ function ScreenContent({ screenId }: { screenId: string }) {
       return <RecentlyPlayedScreen />;
     case "search":
       return <SearchScreen />;
+    case "party":
+      return <PartyScreen />;
+    case "party-join":
+      return <PartyJoinScreen />;
+    case "party-room":
+      return <PartyRoomScreen />;
     case "settings":
       return <SettingsScreen />;
     case "now-playing":

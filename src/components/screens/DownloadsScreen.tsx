@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { usePlayerStore } from "@/stores/player-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
 import type { Song } from "@/types/music";
+import { startPlayback } from "@/lib/playback";
 import { formatTime } from "@/utils/format";
 
 /**
@@ -13,7 +13,6 @@ import { formatTime } from "@/utils/format";
  */
 export function DownloadsScreen() {
   const { push } = useNavigationStore();
-  const { setQueue } = usePlayerStore();
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,7 +60,7 @@ export function DownloadsScreen() {
     icon: "↓",
     subtitle: `${song.artist} · ${formatTime(song.duration)}`,
     action: () => {
-      setQueue(songs, index);
+      startPlayback(songs, index);
       push({ id: "now-playing", title: "Now Playing" });
     },
   }));

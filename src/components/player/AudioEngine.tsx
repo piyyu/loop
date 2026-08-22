@@ -3,16 +3,19 @@
 import { useEffect } from "react";
 import { useAudioPlayer } from "@/hooks/useAudioPlayer";
 import { useKeyboard } from "@/hooks/useKeyboard";
+import { useRoomSync } from "@/hooks/useRoomSync";
 import { useSettingsStore } from "@/stores/settings-store";
 import { usePlayerStore } from "@/stores/player-store";
 
 /**
  * AudioEngine — hidden component that manages the HTML5 Audio element
- * and bridges it with the player store. Also handles keyboard shortcuts.
+ * and bridges it with the player store. Also handles keyboard shortcuts
+ * and the listen-together sync engine.
  */
 export function AudioEngine() {
   useAudioPlayer();
   useKeyboard();
+  useRoomSync();
 
   const { sleepTimer } = useSettingsStore();
   const { pause, isPlaying } = usePlayerStore();
