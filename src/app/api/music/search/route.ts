@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getProvider } from "@/providers/provider-registry";
+import type { Song } from "@/types/music";
 
 /**
  * GET /api/music/search
@@ -16,13 +16,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
     const type = searchParams.get("type");
-
-    const session = await auth();
-    const user = session?.spotifyId
-      ? await prisma.user.findUnique({
-          where: { spotifyId: session.spotifyId },
-        })
-      : null;
 
     // Return all songs from database
     if (type === "all") {
@@ -105,33 +98,72 @@ export async function GET(request: NextRequest) {
 
     // Search by query
     if (query) {
-      // Search database only
-      const dbSongs = await prisma.song.findMany({
-        where: {
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { artist: { contains: query, mode: "insensitive" } },
-            { album: { contains: query, mode: "insensitive" } },
-          ],
-        },
-        include: { match: true },
-        take: 20,
-      });
+      // Search database (non-fatal if the DB is unreachable)
+      let dbSongList: Song[] = [];
+      try {
+        const dbSongs = await prisma.song.findMany({
+          where: {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { artist: { contains: query, mode: "insensitive" } },
+              { album: { contains: query, mode: "insensitive" } },
+            ],
+          },
+          include: { match: true },
+          take: 20,
+        });
 
-      const dbSongList = dbSongs.map((s) => ({
-        id: s.id,
-        spotifyId: s.spotifyId,
-        title: s.title,
-        artist: s.artist,
-        album: s.album,
-        albumArt: s.albumArt,
-        duration: s.duration,
-        trackNumber: s.trackNumber,
-        streamUrl: s.match?.streamUrl || null,
-      }));
+        dbSongList = dbSongs.map((s) => ({
+          id: s.id,
+          spotifyId: s.spotifyId,
+          title: s.title,
+          artist: s.artist,
+          album: s.album,
+          albumArt: s.albumArt,
+          duration: s.duration,
+          trackNumber: s.trackNumber,
+          streamUrl: s.match?.streamUrl || undefined,
+        }));
+      } catch (dbError) {
+        console.warn("DB search failed, using provider results only:", dbError);
+      }
+
+      // Search external provider server-side (avoids browser CORS/network issues)
+      let providerSongs: Song[] = [];
+      try {
+        const provider = getProvider();
+        const results = await provider.searchSong(query);
+        providerSongs = results.map((ps) => ({
+          id: ps.id,
+          spotifyId: "",
+          title: ps.title,
+          artist: ps.artist,
+          album: ps.album,
+          albumArt: ps.albumArt,
+          duration: ps.duration,
+          trackNumber: null,
+          streamUrl: ps.streamUrl || undefined,
+        }));
+      } catch (providerError) {
+        console.warn("Provider search failed:", providerError);
+      }
+
+      // Merge, preferring DB songs
+      const merged = [...dbSongList];
+      for (const ps of providerSongs) {
+        if (
+          !merged.some(
+            (ds) =>
+              ds.title.toLowerCase() === ps.title.toLowerCase() &&
+              ds.artist.toLowerCase() === ps.artist.toLowerCase()
+          )
+        ) {
+          merged.push(ps);
+        }
+      }
 
       return NextResponse.json({
-        songs: dbSongList,
+        songs: merged,
       });
     }
 

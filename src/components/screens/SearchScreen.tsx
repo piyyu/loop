@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { usePlayerStore } from "@/stores/player-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { MenuList } from "@/components/ipod/MenuList";
 import type { MenuItem } from "@/types/navigation";
 import type { Song } from "@/types/music";
-import { formatTime, debounce } from "@/utils/format";
+import { formatTime } from "@/utils/format";
 
 /**
  * Search screen — allows text input and searches across providers.
@@ -25,90 +25,42 @@ export function SearchScreen() {
   const textColor = darkMode ? "#C8D8B8" : "#1a1a1a";
   const mutedColor = darkMode ? "#8A9A7A" : "#5A6A4A";
 
-  const searchSongs = useCallback(
-    debounce(async (q: string) => {
-      if (!q.trim()) {
-        setResults([]);
-        return;
-      }
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) return;
 
+    // Debounced search — all state updates happen asynchronously in the timer
+    const timeoutId = setTimeout(() => {
       setLoading(true);
       setHasSearched(true);
 
-      try {
-        const [dbRes, providerRes] = await Promise.all([
-          fetch(`/api/music/search?q=${encodeURIComponent(q)}`),
-          fetch(`https://nepotuneapi.vercel.app/api/search/songs?query=${encodeURIComponent(q)}&limit=10`)
-        ]);
-
-        let dbSongs: Song[] = [];
-        let providerSongs: Song[] = [];
-
-        if (dbRes.ok) {
-          const data = await dbRes.json();
-          dbSongs = data.songs || [];
-        }
-
-        if (providerRes.ok) {
-          const data = await providerRes.json();
-          if (data.success && data.data?.results) {
-            providerSongs = data.data.results.map((song: any) => {
-              const artists =
-                song.artists?.primary?.map((a: any) => a.name).join(", ") ||
-                song.artists?.all?.map((a: any) => a.name).join(", ") ||
-                "Unknown Artist";
-
-              const streamUrl =
-                song.downloadUrl?.find((u: any) => u.quality === "320kbps")?.url ||
-                song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
-                "";
-
-              let albumArt = song.image?.find((i: any) => i.quality === "500x500")?.url ||
-                song.image?.[song.image.length - 1]?.url ||
-                null;
-
-              if (albumArt && albumArt.includes("150x150")) {
-                albumArt = albumArt.replace("150x150", "500x500");
-              }
-
-              return {
-                id: song.id,
-                spotifyId: "",
-                title: song.name || song.title,
-                artist: artists,
-                album: song.album?.name || "Unknown Album",
-                albumArt,
-                duration: (song.duration || 0) * 1000,
-                trackNumber: null,
-                streamUrl,
-                quality: "high",
-                provider: "jiosaavn",
-              } as Song;
-            });
+      fetch(`/api/music/search?q=${encodeURIComponent(q)}`)
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            setResults(data.songs || []);
           }
-        }
+        })
+        .catch((err) => {
+          console.error("Search failed:", err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, 500);
 
-        // Merge, preferring DB songs
-        const merged = [...dbSongs];
-        for (const ps of providerSongs) {
-          if (!merged.some(ds => ds.title.toLowerCase() === ps.title.toLowerCase() && ds.artist.toLowerCase() === ps.artist.toLowerCase())) {
-            merged.push(ps);
-          }
-        }
+    return () => clearTimeout(timeoutId);
+  }, [query]);
 
-        setResults(merged);
-      } catch (err) {
-        console.error("Search failed:", err);
-      } finally {
-        setLoading(false);
-      }
-    }, 500),
-    []
-  );
-
-  useEffect(() => {
-    searchSongs(query);
-  }, [query, searchSongs]);
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setQuery(q);
+    if (!q.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      setLoading(false);
+    }
+  };
 
   const items: MenuItem[] = results.map((song, index) => ({
     id: song.id,
@@ -127,7 +79,7 @@ export function SearchScreen() {
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleQueryChange}
           placeholder="Search songs..."
           className="w-full bg-transparent outline-none"
           style={{

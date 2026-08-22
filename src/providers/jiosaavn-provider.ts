@@ -1,64 +1,61 @@
 import type { MusicProvider } from "./music-provider";
-import type { AudioQuality, ProviderSong } from "@/types/music";
+import type { ProviderSong } from "@/types/music";
 
-const BASE_URL = "https://nepotuneapi.vercel.app";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_JIOSAAVN_API_URL || "https://saavnapi-nine.vercel.app";
 
-const QUALITY_MAP: Record<AudioQuality, string> = {
-  low: "96kbps",
-  medium: "160kbps",
-  high: "320kbps",
-  lossless: "320kbps",
-};
+interface RawSaavnSong {
+  id: string;
+  song?: string;
+  title?: string;
+  album?: string;
+  image?: string;
+  duration?: string;
+  primary_artists?: string;
+  artistMap?: Record<string, unknown>;
+  media_url?: string;
+  "320kbps"?: string;
+}
+
+interface ProviderSongWithProvider extends ProviderSong {
+  provider: string;
+}
 
 export class JioSaavnProvider implements MusicProvider {
   readonly name = "jiosaavn";
   readonly displayName = "JioSaavn";
 
+  // Cache of id → stream url populated by search results,
+  // used as a fallback for getStreamUrl since this API has no by-id endpoint.
+  private streamCache = new Map<string, string>();
+
   private async fetchApi<T>(endpoint: string): Promise<T | null> {
     try {
       const response = await fetch(`${BASE_URL}${endpoint}`, { cache: "no-store" });
       if (!response.ok) return null;
-      const json = await response.json();
-      if (!json.success) return null;
-      return json.data;
+      return (await response.json()) as T;
     } catch (error) {
       console.error(`JioSaavn API Error on ${endpoint}:`, error);
       return null;
     }
   }
 
-  async searchSong(query: string, artist?: string): Promise<ProviderSong[]> {
-    const searchQuery = artist ? `${query} ${artist}` : query;
-    const data = await this.fetchApi<any>(`/api/search/songs?query=${encodeURIComponent(searchQuery)}&limit=10`);
-    const results = data?.results || [];
-    return results.map((song: any) => this.mapToProviderSong(song));
+  async searchSong(query: string): Promise<ProviderSong[]> {
+    const data = await this.fetchApi<RawSaavnSong[]>(
+      `/result/?query=${encodeURIComponent(query)}`
+    );
+    const results = Array.isArray(data) ? data : [];
+    return results.map((song) => this.mapToProviderSong(song));
   }
 
-  async getSong(id: string): Promise<ProviderSong | null> {
-    const data = await this.fetchApi<any[]>(`/api/songs/${encodeURIComponent(id)}`);
-    const song = data?.[0];
-    if (!song) return null;
-    return this.mapToProviderSong(song);
+  async getStreamUrl(id: string): Promise<string> {
+    const cached = this.streamCache.get(id);
+    if (cached) return cached;
+    throw new Error(`No stream URL available for: ${id}`);
   }
 
-  async getStreamUrl(id: string, quality: AudioQuality = "high"): Promise<string> {
-    const data = await this.fetchApi<any[]>(`/api/songs/${encodeURIComponent(id)}`);
-    const song = data?.[0];
-    if (!song) throw new Error(`Song not found: ${id}`);
-
-    const targetQuality = QUALITY_MAP[quality];
-    const downloadUrls = song.downloadUrl || [];
-    
-    const match =
-      downloadUrls.find((u: any) => u.quality === targetQuality) ||
-      downloadUrls[downloadUrls.length - 1]; // highest available
-
-    if (!match) throw new Error(`No stream URL available for: ${id}`);
-    return match.url;
-  }
-
-  async download(id: string, quality: AudioQuality = "high"): Promise<ArrayBuffer> {
-    const streamUrl = await this.getStreamUrl(id, quality);
+  async download(id: string): Promise<ArrayBuffer> {
+    const streamUrl = await this.getStreamUrl(id);
     const response = await fetch(streamUrl);
 
     if (!response.ok) {
@@ -68,37 +65,39 @@ export class JioSaavnProvider implements MusicProvider {
     return response.arrayBuffer();
   }
 
-  private mapToProviderSong(song: any): ProviderSong {
-    // Extract artists
+  async getSong(id: string): Promise<ProviderSong | null> {
+    if (this.streamCache.has(id)) {
+      const cached = await this.searchSong(id);
+      return cached.find((s) => s.id === id) || null;
+    }
+    return null;
+  }
+
+  private mapToProviderSong(song: RawSaavnSong): ProviderSongWithProvider {
     const artists =
-      song.artists?.primary?.map((a: any) => a.name).join(", ") ||
-      song.artists?.all?.map((a: any) => a.name).join(", ") ||
+      song.primary_artists ||
+      (song.artistMap ? Object.keys(song.artistMap).join(", ") : "") ||
       "Unknown Artist";
 
-    // Extract best stream url (320kbps or fallback)
-    const streamUrl =
-      song.downloadUrl?.find((u: any) => u.quality === "320kbps")?.url ||
-      song.downloadUrl?.[song.downloadUrl.length - 1]?.url ||
-      "";
+    const streamUrl = song.media_url || "";
+    if (streamUrl && song.id) {
+      this.streamCache.set(song.id, streamUrl);
+    }
 
-    // Extract high-quality image
-    let albumArt = song.image?.find((i: any) => i.quality === "500x500")?.url ||
-      song.image?.[song.image.length - 1]?.url ||
-      null;
-
+    let albumArt = song.image || null;
     if (albumArt && albumArt.includes("150x150")) {
       albumArt = albumArt.replace("150x150", "500x500");
     }
 
     return {
       id: song.id,
-      title: song.name || song.title,
+      title: song.song || song.title || "Unknown Title",
       artist: artists,
-      album: song.album?.name || "Unknown Album",
+      album: song.album || "Unknown Album",
       albumArt,
-      duration: (song.duration || 0) * 1000, // convert seconds to ms
+      duration: (parseInt(song.duration || "0", 10) || 0) * 1000,
       streamUrl,
-      quality: "high",
+      quality: song["320kbps"] === "true" ? "high" : "medium",
       provider: this.name,
     };
   }
