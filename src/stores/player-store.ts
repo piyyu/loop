@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { useRoomStore } from "@/stores/room-store";
 import type { Song } from "@/types/music";
 import type { RepeatMode } from "@/types/player";
 import { shuffleArray } from "@/utils/format";
@@ -90,15 +91,26 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
         });
       }
     } else {
+      if (useRoomStore.getState().isInRoom()) {
+        void useRoomStore.getState().sendAction({ type: "play" });
+      }
       set({ isPlaying: true });
     }
   },
 
-  pause: () => set({ isPlaying: false }),
+  pause: () => {
+    if (useRoomStore.getState().isInRoom()) {
+      void useRoomStore.getState().sendAction({ type: "pause" });
+    }
+    set({ isPlaying: false });
+  },
 
   togglePlay: () => {
     const { isPlaying, currentSong } = get();
     if (currentSong) {
+      if (useRoomStore.getState().isInRoom()) {
+        void useRoomStore.getState().sendAction({ type: isPlaying ? "pause" : "play" });
+      }
       set({ isPlaying: !isPlaying });
     }
   },
