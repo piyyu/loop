@@ -5,6 +5,7 @@ import { useNavigationStore } from "@/stores/navigation-store";
 import { useRoomStore } from "@/stores/room-store";
 import { getRememberedRoom, setMemberName } from "@/lib/room-client";
 import { MenuList } from "@/components/ipod/MenuList";
+import { unlockAudio } from "@/lib/audio-registry";
 import type { MenuItem } from "@/types/navigation";
 
 /**
@@ -29,6 +30,7 @@ export function PartyScreen() {
 
   const handleCreate = async () => {
     setBusy(true);
+    unlockAudio();
     if (await createRoom()) {
       openRoom();
     }
@@ -37,6 +39,7 @@ export function PartyScreen() {
 
   const handleRejoin = async (code: string) => {
     setBusy(true);
+    unlockAudio();
     if (await joinRoom(code)) {
       openRoom();
     }

@@ -71,7 +71,21 @@ export function useAudioPlayer() {
     };
 
     const onLoadStart = () => setLoading(true);
-    const onCanPlay = () => setLoading(false);
+    const onCanPlay = () => {
+      setLoading(false);
+      const room = useRoomStore.getState();
+      if (room.isInRoom() && room.state?.current) {
+        const expectedSec = room.expectedPositionMs() / 1000;
+        if (expectedSec > 0 && Math.abs(audio.currentTime - expectedSec) > 0.4) {
+          audio.currentTime = Math.max(0, expectedSec);
+        }
+        if (room.state.isPlaying && audio.paused) {
+          audio.play().catch(() => {});
+        }
+      } else if (usePlayerStore.getState().isPlaying && audio.paused) {
+        audio.play().catch(() => {});
+      }
+    };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("durationchange", onDurationChange);
@@ -207,7 +221,9 @@ export function useAudioPlayer() {
   useEffect(() => {
     if (seekTo !== null && audioRef.current) {
       seekingRef.current = true;
-      audioRef.current.currentTime = seekTo;
+      if (audioRef.current.readyState >= 1) {
+        audioRef.current.currentTime = seekTo;
+      }
       seek(seekTo);
       usePlayerStore.setState({ seekTo: null });
       seekingRef.current = false;

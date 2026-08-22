@@ -19,3 +19,14 @@ export function unregisterAudioElement(audio: HTMLAudioElement): void {
 export function getAudioElement(): HTMLAudioElement | null {
   return instance;
 }
+
+export function unlockAudio(): void {
+  if (instance) {
+    const promise = instance.play();
+    if (promise !== undefined) {
+      promise.catch(() => {
+        // Autoplay unlock attempt
+      });
+    }
+  }
+}

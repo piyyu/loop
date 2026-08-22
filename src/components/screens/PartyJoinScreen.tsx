@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useRoomStore } from "@/stores/room-store";
 import { MenuList } from "@/components/ipod/MenuList";
+import { unlockAudio } from "@/lib/audio-registry";
 
 /**
  * Join a listen-together room by its 4-character code.
@@ -17,6 +18,7 @@ export function PartyJoinScreen() {
 
   const handleJoin = async () => {
     if (code.trim().length < 4) return;
+    unlockAudio();
     if (await joinRoom(code.trim())) {
       push({
         id: "party-room",
