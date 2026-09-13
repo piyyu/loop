@@ -17,18 +17,19 @@ import { THEMES } from "@/types/settings";
  * Displays: screen title, play indicator, battery, time.
  */
 export function StatusBar() {
-  const { currentScreen } = useNavigationStore();
-  const { isPlaying, currentSong } = usePlayerStore();
+  const { currentScreen, screenStack, pop } = useNavigationStore();
+  const { isPlaying } = usePlayerStore();
   const { theme, darkMode } = useSettingsStore();
   const { isOffline } = useOffline();
 
   const colors = THEMES[theme];
   const textColor = darkMode ? "#C8D8B8" : colors.screenText;
   const bgColor = darkMode ? "rgba(20,30,15,0.95)" : "rgba(0,0,0,0.06)";
+  const canGoBack = screenStack.length > 1;
 
   return (
     <div
-      className="flex items-center justify-between px-3 py-1.5 relative z-10"
+      className="flex items-center justify-between px-3 py-1.5 relative z-10 select-none"
       style={{
         background: bgColor,
         borderBottom: darkMode
@@ -40,8 +41,20 @@ export function StatusBar() {
         fontFamily: "'Chicago', 'SF Pro Text', system-ui, sans-serif",
       }}
     >
-      {/* Left: Title */}
+      {/* Left: Title & Back Button */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {canGoBack && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              pop();
+            }}
+            className="text-[10px] font-bold opacity-80 hover:opacity-100 flex items-center gap-0.5 cursor-pointer active:scale-95 transition-opacity"
+            aria-label="Back"
+          >
+            ‹ Back
+          </button>
+        )}
         <span className="truncate">{currentScreen.title}</span>
       </div>
 

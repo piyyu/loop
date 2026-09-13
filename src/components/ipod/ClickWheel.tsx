@@ -15,11 +15,14 @@ import { THEMES } from "@/types/settings";
  * Supports touch/mouse rotation for scrolling and quadrant buttons.
  */
 export function ClickWheel() {
-  const { scrollUp, scrollDown, select, pop, push } = useNavigationStore();
+  const { scrollUp, scrollDown, select, pop, push, goHome } = useNavigationStore();
   const { togglePlay, next, previous } = usePlayerStore();
   const { theme, darkMode } = useSettingsStore();
   const haptic = useHaptic();
   const sounds = useSounds();
+
+  const menuTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef(false);
 
   const colors = THEMES[theme];
   const wheelOuter = darkMode ? "#2A2A2A" : colors.wheelOuter;
@@ -98,9 +101,9 @@ export function ClickWheel() {
         aria-orientation="vertical"
         tabIndex={0}
       >
-        {/* MENU label — top */}
+        {/* MENU label — top (Tap: back 1 level, Hold: jump to Home) */}
         <button
-          className="absolute top-5 left-1/2 -translate-x-1/2 font-bold tracking-widest text-[11px] uppercase z-10 px-4 py-2 transition-opacity cursor-pointer active:scale-95"
+          className="absolute top-5 left-1/2 -translate-x-1/2 font-bold tracking-widest text-[11px] uppercase z-10 px-4 py-2 transition-opacity cursor-pointer active:scale-95 select-none"
           style={{
             color: textColor,
             opacity: activeButton === "menu" ? 0.6 : 0.8,
@@ -108,12 +111,33 @@ export function ClickWheel() {
           }}
           onPointerDown={(e) => {
             e.stopPropagation();
+            isLongPressRef.current = false;
+            menuTimerRef.current = setTimeout(() => {
+              isLongPressRef.current = true;
+              setActiveButton("menu");
+              haptic.select();
+              sounds.select();
+              goHome();
+              setTimeout(() => setActiveButton(null), 150);
+            }, 400);
           }}
-          onClick={(e) => {
+          onPointerUp={(e) => {
             e.stopPropagation();
-            handleButtonPress("menu");
+            if (menuTimerRef.current) {
+              clearTimeout(menuTimerRef.current);
+              menuTimerRef.current = null;
+            }
+            if (!isLongPressRef.current) {
+              handleButtonPress("menu");
+            }
           }}
-          aria-label="Menu - go back"
+          onPointerLeave={() => {
+            if (menuTimerRef.current) {
+              clearTimeout(menuTimerRef.current);
+              menuTimerRef.current = null;
+            }
+          }}
+          aria-label="Menu - tap to go back, hold for home"
         >
           MENU
         </button>
